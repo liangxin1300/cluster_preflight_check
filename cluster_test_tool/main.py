@@ -4,11 +4,12 @@ import re
 import argparse
 import functools
 import getpass
-import pam
-import config
-import utils
 import time
 from datetime import datetime
+
+from . import config
+from . import pam
+from . import utils
 
 
 def login(func):
@@ -195,5 +196,3 @@ def run():
     except KeyboardInterrupt:
         print("\nCtrl-C, leaving")
         sys.exit(1)
-
-run()
