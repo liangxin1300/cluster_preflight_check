@@ -44,7 +44,7 @@ def login(func):
 @login
 def kill_testcase(option):
     print("Testcase:         Force Kill \"{}\"".format(option.name))
-    print("Expect Result:    {}".format(option.expect))
+    print("Expected Result:    {}".format(option.expect))
     if not utils.ask("Run?"):
         return
     print()
@@ -52,7 +52,7 @@ def kill_testcase(option):
     if not check_require(option):
         return
 
-    utils.msg_warn("Try to run \"{}\"".format(option.command))
+    utils.msg_warn("Trying to run \"{}\"".format(option.command))
     fence_info = ()
     if option.expect == "fence":
         fence_info = utils.get_fence_info()
@@ -174,7 +174,7 @@ def run():
                                  metavar='NODE')
         other_options = parser.add_argument_group('Other Options')
         other_options.add_argument('-y', '--yes', dest='yes', action='store_true',
-                                   help='Answer "yes" to ask if run the test')
+                                   help='Answer "yes" if asked to run the test')
         other_options.add_argument('-u', dest='user', metavar='USER',
                                    help='User for login')
         other_options.add_argument('-p', dest='password', metavar='PASSWORD',
