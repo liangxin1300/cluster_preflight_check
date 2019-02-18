@@ -23,7 +23,7 @@ def login(func):
                 password = config.LOGIN_PASSWORD
             else:
                 username = input("User name: ")
-                if username == "" or username != "hacluster":
+                if username == "" or username != "root":
                     utils.msg_error("User name is error!")
                     sys.exit(1)
                 password = getpass.getpass()
@@ -156,22 +156,24 @@ def after_run(option, fence_info):
 
 def run():
     try:
-        if not utils.is_cluster_running():
-            utils.msg_error("cluster is not running!")
-            sys.exit(1)
-
         parser = argparse.ArgumentParser(description='Cluster Testing Tool Set')
+
         group_kill = parser.add_argument_group('Kill Process')
         for option in config.option_list:
             group_kill.add_argument(option.option,
                                     help=option.help,
                                     dest=option.dest,
                                     action="store_true")
+        group_kill.add_argument('-m', '--mask-service', dest='mask', action="store_true",
+                                help='''mask specific systemd service;
+                                     work follow with kill sbd/corosync/pacemakerd options''')
+
         group_fence = parser.add_argument_group('Fence Node')
         group_fence.add_argument('--fence-node',
                                  help='Fence specific node',
                                  dest='fence_node',
                                  metavar='NODE')
+
         other_options = parser.add_argument_group('Other Options')
         other_options.add_argument('-y', '--yes', dest='yes', action='store_true',
                                    help='Answer "yes" if asked to run the test')
@@ -181,6 +183,13 @@ def run():
                                    help='Password for login')
 
         args = parser.parse_args()
+
+        if len(sys.argv) == 1:
+            return
+        if not utils.is_cluster_running():
+            utils.msg_error("cluster is not running!")
+            sys.exit(1)
+
         if args.yes:
             config.PASS_ASK = True
         if args.user:

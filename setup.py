@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="cluster_test_tool",
-    version="0.0.7",
+    version="0.0.8",
     author="Xin Liang",
     author_email="XLiang@suse.com",
     packages=setuptools.find_packages(),
