@@ -1,8 +1,9 @@
 import subprocess
 import os
 import re
-import config
 from datetime import datetime
+
+from . import config
 
 
 CRED = '\033[31m'
