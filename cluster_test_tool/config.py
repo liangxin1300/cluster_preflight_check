@@ -2,7 +2,7 @@
 
 processes_name_want_to_kill = [
     ('sbd', '', 'fence'),
-    ('corosync', '', 'fence'),
+    ('corosync', '', 'Fence by other node'),
     ('pacemakerd', '', 'restart'),
     ('pacemaker-based', 'cib', 'fence'),
     ('pacemaker-fenced', 'stonithd', 'restart'),

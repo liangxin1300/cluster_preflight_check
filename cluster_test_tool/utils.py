@@ -10,18 +10,18 @@ CRED = '\033[31m'
 CYELLOW = '\033[33m'
 CGREEN = '\033[32m'
 CEND = '\033[0m'
-
+NOW = "[%s] " % datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
 def msg_info(msg):
-    print(CGREEN + "INFO: " + CEND + msg)
+    print(NOW + CGREEN + "INFO: " + CEND + msg)
 
 
 def msg_warn(msg):
-    print(CYELLOW + "WARN: " + CEND + msg)
+    print(NOW + CYELLOW + "WARN: " + CEND + msg)
 
 
 def msg_error(msg):
-    print(CRED + "ERROR: " + CEND + msg)
+    print(NOW + CRED + "ERROR: " + CEND + msg)
 
 
 def to_ascii(s):
