@@ -7,6 +7,7 @@ import getpass
 import time
 from datetime import datetime
 
+from . import check
 from . import config
 from . import pam
 from . import utils
@@ -23,7 +24,7 @@ def login(func):
                 password = config.LOGIN_PASSWORD
             else:
                 username = input("User name: ")
-                if username == "" or username != "root":
+                if username == "" or username != "hacluster":
                     utils.msg_error("User name is error!")
                     sys.exit(1)
                 password = getpass.getpass()
@@ -43,21 +44,32 @@ def login(func):
 
 @login
 def kill_testcase(option):
-    print("Testcase:         Force Kill \"{}\"".format(option.name))
+    print("Testcase:           Force Kill \"{}\"".format(option.name))
+    print("Systemd Controlled; {}".format(not config.MASK))
     print("Expected Result:    {}".format(option.expect))
+    print("Looping times:      {}".format(config.LOOP))
     if not utils.ask("Run?"):
         return
     print()
 
-    if not check_require(option):
-        return
+    looping_count = 0
+    while looping_count < config.LOOP:
+        if not check_require(option):
+            return
 
-    utils.msg_warn("Trying to run \"{}\"".format(option.command))
-    fence_info = ()
-    if option.expect == "fence":
-        fence_info = utils.get_fence_info()
-    utils.run_cmd(option.command)
-    after_run(option, fence_info)
+        fence_info = ()
+        if option.expect.startswith("Fence"):
+            fence_info = utils.get_fence_info()
+
+        if config.MASK:
+            utils.msg_warn("Running \"{}\"".format(option.mask_cmd))
+            utils.run_cmd(option.mask_cmd)
+        utils.msg_warn("Trying to run \"{}\"".format(option.command))
+        utils.run_cmd(option.command)
+        after_run(option, fence_info)
+
+        print('')
+        looping_count += 1
 
 
 @login
@@ -122,26 +134,28 @@ def check_require(option):
         return False
 
     utils.msg_info("Process {}({}) is running...".format(option.name, pid))
-    time.sleep(1)
 
-    if option.expect == "fence":
+    if option.expect.startswith("Fence"):
         if not utils.is_fence_enabled():
             return False
     return True
 
 
 def after_run(option, fence_info):
-    if option.expect == "restart":
+    if option.expect in ("restart", "open"):
         count = 0
         while count <= config.RESTART_TIMEOUT:
-            time.sleep(1)
+            time.sleep(0.1)
             rc, pid = utils.get_process_status(option.name)
             if rc:
                 utils.msg_info("Success! Process {}({}) is restarted!".format(option.name, pid))
+                if config.MASK:
+                    utils.msg_info("Running \"{}\"".format(option.unmask_cmd))
+                    utils.run_cmd(option.unmask_cmd)
                 return
             else:
                 count += 1
-    if option.expect == "fence":
+    if option.expect.startswith("Fence"):
         fence_action = fence_info[1]
         if not fence_action:
             sys.exit(1)
@@ -158,6 +172,12 @@ def run():
     try:
         parser = argparse.ArgumentParser(description='Cluster Testing Tool Set')
 
+        group_basic = parser.add_argument_group('Basic Check')
+        group_basic.add_argument('-e', '--env-check', dest='env_check', action="store_true",
+                                 help='Check environment')
+        group_basic.add_argument('-c', '--cluster-check', dest='cluster_check', action="store_true",
+                                 help='Check cluster state')
+
         group_kill = parser.add_argument_group('Kill Process')
         for option in config.option_list:
             group_kill.add_argument(option.option,
@@ -165,8 +185,9 @@ def run():
                                     dest=option.dest,
                                     action="store_true")
         group_kill.add_argument('-m', '--mask-service', dest='mask', action="store_true",
-                                help='''mask specific systemd service;
-                                     work follow with kill sbd/corosync/pacemakerd options''')
+                                help='mask related systemd service')
+        group_kill.add_argument('-l', '--kill-loop', dest='loop', metavar='LOOP', type=int,
+                                help='kill process in loop')
 
         group_fence = parser.add_argument_group('Fence Node')
         group_fence.add_argument('--fence-node',
@@ -186,9 +207,6 @@ def run():
 
         if len(sys.argv) == 1:
             return
-        if not utils.is_cluster_running():
-            utils.msg_error("cluster is not running!")
-            sys.exit(1)
 
         if args.yes:
             config.PASS_ASK = True
@@ -196,6 +214,17 @@ def run():
             config.LOGIN_USER = args.user
         if args.password:
             config.LOGIN_PASSWORD = args.password
+        if args.mask:
+            config.MASK = True
+        if args.loop:
+            config.LOOP = args.loop
+        if args.env_check:
+            check.check_environment()
+        if args.cluster_check:
+            check.check_cluster()
+        if not utils.is_cluster_running():
+            utils.msg_error("cluster is not running!")
+            sys.exit(1)
         for option in config.option_list:
             if hasattr(args, option.dest) and getattr(args, option.dest):
                 kill_testcase(option)

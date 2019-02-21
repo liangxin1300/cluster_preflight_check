@@ -3,25 +3,73 @@ import os
 import re
 from datetime import datetime
 
-from . import config
-
 
 CRED = '\033[31m'
 CYELLOW = '\033[33m'
 CGREEN = '\033[32m'
 CEND = '\033[0m'
-NOW = "[%s] " % datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+
+
+def now():
+    return "[{}]".format(datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
+
+
+def msg_str(msg_type, msg, prefix="now"):
+    if msg_type not in ("info", "warn", "error"):
+        raise TypeError("msg_type must be info|warn|error")
+
+    color = CGREEN
+    if msg_type == "warn":
+        color = CYELLOW
+    if msg_type == "error":
+        color = CRED
+    if prefix == "now":
+        prefix = now()
+    return "{}{}{}:{} {}".format(prefix, color, msg_type.upper(), CEND, msg)
+ 
 
 def msg_info(msg):
-    print(NOW + CGREEN + "INFO: " + CEND + msg)
+    print(msg_str("info", msg))
 
 
 def msg_warn(msg):
-    print(NOW + CYELLOW + "WARN: " + CEND + msg)
+    print(msg_str("warn", msg))
 
 
 def msg_error(msg):
-    print(NOW + CRED + "ERROR: " + CEND + msg)
+    print(msg_str("error", msg))
+
+
+class TaskInfo(object):
+
+    def  __init__(self, description):
+        self.passed = True
+        self.messages = []
+        self.description = description
+
+    def info_append(self, msg):
+        self.msg_append("info", msg)
+
+    def warn_append(self, msg):
+        self.msg_append("warn", msg)
+
+    def error_append(self, msg):
+        self.msg_append("error", msg)
+
+    def msg_append(self, msg_type, msg):
+        if msg_type in ("warn", "error"):
+            self.passed = False
+        self.messages.append((msg_type, msg))
+
+    def print_result(self):
+        print(msg_str("info", self.description), end=' ')
+        if self.passed:
+            print("[{}]".format(CGREEN + "Passed" + CEND))
+        else:
+            print("[{}]".format(CRED + "Not Passed" + CEND))
+        
+        for msg in self.messages:
+            print(msg_str(msg[0], msg[1], prefix='  '))
 
 
 def to_ascii(s):
@@ -34,13 +82,11 @@ def to_ascii(s):
     try:
         return str(s, 'utf-8')
     except UnicodeDecodeError:
-        if config.core.debug or options.regression_tests:
-            import traceback
-            traceback.print_exc()
         return s
 
 
 def ask(msg):
+    from . import config
     if config.PASS_ASK:
         return True
     msg += ' '
@@ -56,6 +102,33 @@ def ask(msg):
             ans = ans[0].lower()
             if ans in 'yn':
                 return ans == 'y'
+
+
+def whether_pacemaker2_daemons():
+    from . import config
+    for daemon in config.pacemaker2_daemons:
+        if not os.path.exists(os.path.join("/usr/lib/pacemaker", daemon)):
+            return False
+    return True
+
+
+def is_pacemaker_1():
+    return not whether_pacemaker2_daemons()
+
+
+def detect_watchdog_device():
+    """
+    Find the watchdog device. Fall back to /dev/watchdog.
+    """
+    wdconf = "/etc/modules-load.d/watchdog.conf"
+    watchdog_dev = "/dev/watchdog"
+    if os.path.exists(wdconf):
+        txt = open(wdconf, "r").read()
+        for line in txt.splitlines():
+            m = re.match(r'^\s*watchdog-device\s*=\s*(.*)$', line)
+            if m:
+                watchdog_dev = m.group(1)
+    return watchdog_dev
 
 
 def run_cmd(cmd, input_s=None, shell=True, wait=True):
@@ -90,7 +163,7 @@ def get_process_status(s):
         try:
             cmdline = open(join('/proc', pid, 'cmdline'), 'rb').read()
             procname = basename(to_ascii(cmdline).replace('\x00', ' ').split(' ')[0])
-            if procname == s:
+            if procname == s or procname == s + ':':
                 return True, pid
         except EnvironmentError:
             # a process may have died since we got the list of pids
@@ -100,9 +173,8 @@ def get_process_status(s):
 
 def get_property(name):
     cmd = "crm configure get_property " + name
-    rc, stdout, stderr = run_cmd(cmd)
+    rc, stdout, _ = run_cmd(cmd)
     if rc != 0:
-        msg_error(stderr)
         return None
     else:
         return stdout
@@ -122,7 +194,6 @@ def is_fence_enabled():
     if fence_enabled and fence_enabled.lower() == "true":
         return True
     else:
-        msg_warn("Cluster property \"stonith-enabled\" should be set \"true\"")
         return False
 
 
@@ -140,6 +211,8 @@ def get_fence_info():
     fence_enabled = False
     if is_fence_enabled():
         fence_enabled = True
+    else:
+        msg_warn("Cluster property \"stonith-enabled\" should be set \"true\"")
     fence_action = get_fence_action()
     fence_timeout = get_fence_timeout()
     return (fence_enabled, fence_action, fence_timeout)
@@ -178,6 +251,23 @@ def service_is_active(service):
     return rc == 0
 
 
+def service_is_enabled(service):
+    """
+    Check if service is enabled
+    """
+    rc, _, _ = run_cmd('systemctl is-enabled {}'.format(service))
+    return rc == 0
+
+
+def grep_output(cmd, txt):
+    _rc, outp, _err = run_cmd(cmd)
+    return txt in outp
+
+
+def service_is_available(svcname):
+    return grep_output("systemctl list-unit-files {}".format(svcname), svcname)
+
+
 def is_cluster_running():
     return service_is_active('corosync') and \
            service_is_active('pacemaker')
@@ -189,3 +279,8 @@ def which(prog):
         msg_error(err)
         return False
     return True
+
+
+def this_node():
+    'returns name of this node (hostname)'
+    return os.uname()[1]
