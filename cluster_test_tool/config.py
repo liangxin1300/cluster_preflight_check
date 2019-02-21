@@ -1,16 +1,20 @@
 
-
 processes_name_want_to_kill = [
-    ('sbd', '', 'fence'),
-    ('corosync', '', 'Fence by other node'),
-    ('pacemakerd', '', 'restart'),
-    ('pacemaker-based', 'cib', 'fence'),
-    ('pacemaker-fenced', 'stonithd', 'restart'),
-    ('pacemaker-execd', 'lrmd', 'restart'),
-    ('pacemaker-attrd', 'attrd', 'restart'),
-    ('pacemaker-schedulerd', 'pengine', 'restart'),
-    ('pacemaker-controld', 'crmd', 'restart')
+    # (name, alias, expect, systemd service)
+    ('sbd', '', 'open', 'sbd'),
+    ('corosync', '', 'open', 'corosync'),
+    ('pacemakerd', '', 'restart', 'pacemaker'),
+    ('pacemaker-based', 'cib', 'Fence by other node', 'pacemaker'),
+    ('pacemaker-fenced', 'stonithd', 'restart', 'pacemaker'),
+    ('pacemaker-execd', 'lrmd', 'restart', 'pacemaker'),
+    ('pacemaker-attrd', 'attrd', 'restart', 'pacemaker'),
+    ('pacemaker-schedulerd', 'pengine', 'restart', 'pacemaker'),
+    ('pacemaker-controld', 'crmd', 'restart', 'pacemaker')
 ]
+
+
+pacemaker2_daemons = ("pacemaker-based", "pacemaker-fenced", "pacemaker-execd",
+                    "pacemaker-attrd", "pacemaker-schedulerd", "pacemaker-controld")
 
 
 RESTART_TIMEOUT = 5
@@ -21,14 +25,26 @@ LOGIN = False
 LOGIN_USER = None
 LOGIN_PASSWORD = None
 PASS_ASK = False
+MASK = False
+LOOP = 1
 
 
 class Option(object):
-    def __init__(self, name, alias, expect):
-        self.name = name
+    def __init__(self, name, alias, expect, systemd):
+        from . import utils
+        if utils.is_pacemaker_1() and alias != '':
+            self.name = alias
+        else:
+            self.name = name
         self.alias = alias
         self.expect = expect
-        self.command = "killall -9 " + self.name
+        self.mask_cmd = "systemctl mask {} --runtime".format(systemd)
+        self.unmask_cmd = "systemctl unmask {} --runtime".format(systemd)
+        # killall doesn't work for long command, see man killall
+        if len(self.name) > 15:
+            self.command = "kill -9 `pidof {}`".format(self.name)
+        else:
+            self.command = "killall -9 " + self.name
         self.option = "--kill-{}".format(self.alias if self.alias else self.name)
         self.dest = self.alias if self.alias else self.name
         self.help = "kill {}{} daemon".\
