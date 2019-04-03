@@ -68,7 +68,8 @@ def check_watchdog():
 
 def check_cluster():
     print("============Checking cluster state============")
-    check_cluster_service()
+    if not check_cluster_service():
+        return
     check_fencing()
     check_nodes()
     check_resources()
@@ -78,11 +79,17 @@ def check_cluster():
 def check_cluster_service():
     task = utils.TaskInfo("Checking cluster service")
     for s in ("corosync", "pacemaker"):
+        if utils.service_is_enabled(s):
+            task.info_append("{} is enabled".format(s))
+        else:
+            task.warn_append("{} is disabled".format(s))
+
         if utils.service_is_active(s):
             task.info_append("{} service is running".format(s))
         else:
             task.error_append("{} service is not running!".format(s))
     task.print_result()
+    return task.passed
 
 
 def check_fencing():
