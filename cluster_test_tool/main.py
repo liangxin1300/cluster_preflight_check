@@ -19,15 +19,11 @@ def login(func):
         if config.LOGIN:
             print("###############")
         else:
-            if config.LOGIN_USER and config.LOGIN_PASSWORD:
-                username = config.LOGIN_USER
-                password = config.LOGIN_PASSWORD
-            else:
-                username = input("User name: ")
-                if username == "" or username != "hacluster":
-                    utils.msg_error("User name is error!")
-                    sys.exit(1)
-                password = getpass.getpass()
+            username = config.LOGIN_USER if config.LOGIN_USER else input("User name: ")
+            if username == "" or username != "hacluster":
+                utils.msg_error("User name is error!")
+                sys.exit(1)
+            password = config.LOGIN_PASSWORD if config.LOGIN_PASSWORD else getpass.getpass()
 
             pam_instance = pam.pam()
             pam_instance.authenticate(username, password)
