@@ -15,8 +15,8 @@ def now():
 
 
 def msg_str(msg_type, msg, prefix="now"):
-    if msg_type not in ("info", "warn", "error"):
-        raise TypeError("msg_type must be info|warn|error")
+    if msg_type not in ("info", "warn", "error", "debug"):
+        raise TypeError("msg_type must be info|warn|error|debug")
 
     color = CGREEN
     if msg_type == "warn":
@@ -38,6 +38,12 @@ def msg_warn(msg):
 
 def msg_error(msg):
     print(msg_str("error", msg))
+
+
+def msg_debug(msg):
+    from . import config
+    if config.DEBUG:
+        print(msg_str("debug", msg))
 
 
 class TaskInfo(object):
