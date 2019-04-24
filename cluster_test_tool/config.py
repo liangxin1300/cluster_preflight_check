@@ -27,6 +27,7 @@ LOGIN_PASSWORD = None
 PASS_ASK = False
 MASK = False
 LOOP = 1
+DEBUG = False
 
 
 class Option(object):

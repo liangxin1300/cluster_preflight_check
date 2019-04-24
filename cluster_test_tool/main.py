@@ -66,6 +66,7 @@ def kill_testcase(option):
 
         print('')
         looping_count += 1
+        utils.msg_debug("looping {} times".format(looping_count))
 
 
 @login
@@ -192,6 +193,8 @@ def run():
                                  metavar='NODE')
 
         other_options = parser.add_argument_group('Other Options')
+        other_options.add_argument('-d', '--debug', dest='debug', action='store_true',
+                                   help='Print verbose debugging information')
         other_options.add_argument('-y', '--yes', dest='yes', action='store_true',
                                    help='Answer "yes" if asked to run the test')
         other_options.add_argument('-u', dest='user', metavar='USER',
@@ -214,6 +217,8 @@ def run():
             config.MASK = True
         if args.loop:
             config.LOOP = args.loop
+        if args.debug:
+            config.DEBUG = True
         if args.env_check:
             check.check_environment()
         if args.cluster_check:
