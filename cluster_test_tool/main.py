@@ -49,9 +49,9 @@ def kill_testcase(option):
     print()
 
     looping_count = 0
-    while looping_count < config.LOOP:
+    while True:
         if not check_require(option):
-            return
+            continue
 
         fence_info = ()
         if option.expect.startswith("Fence"):
@@ -60,13 +60,17 @@ def kill_testcase(option):
         if config.MASK:
             utils.msg_warn("Running \"{}\"".format(option.mask_cmd))
             utils.run_cmd(option.mask_cmd)
+
         utils.msg_warn("Trying to run \"{}\"".format(option.command))
+        print('')
         utils.run_cmd(option.command)
         after_run(option, fence_info)
 
-        print('')
         looping_count += 1
-        utils.msg_debug("looping {} times".format(looping_count))
+        if config.LOOP:
+            continue
+        else:
+            break
 
 
 @login
@@ -127,7 +131,7 @@ def fence_node(node):
 def check_require(option):
     rc, pid = utils.get_process_status(option.name)
     if not rc:
-        utils.msg_error("Process {} is not running!".format(option.name))
+        #utils.msg_error("Process {} is not running!".format(option.name))
         return False
 
     utils.msg_info("Process {}({}) is running...".format(option.name, pid))
@@ -139,6 +143,7 @@ def check_require(option):
 
 
 def after_run(option, fence_info):
+    """
     if option.expect in ("restart", "open"):
         count = 0
         while count <= config.RESTART_TIMEOUT:
@@ -152,6 +157,7 @@ def after_run(option, fence_info):
                 return
             else:
                 count += 1
+    """
     if option.expect.startswith("Fence"):
         fence_action = fence_info[1]
         if not fence_action:
@@ -183,7 +189,7 @@ def run():
                                     action="store_true")
         group_kill.add_argument('-m', '--mask-service', dest='mask', action="store_true",
                                 help='mask related systemd service')
-        group_kill.add_argument('-l', '--kill-loop', dest='loop', metavar='LOOP', type=int,
+        group_kill.add_argument('-l', '--kill-loop', dest='loop', action="store_true",
                                 help='kill process in loop')
 
         group_fence = parser.add_argument_group('Fence Node')
@@ -216,7 +222,7 @@ def run():
         if args.mask:
             config.MASK = True
         if args.loop:
-            config.LOOP = args.loop
+            config.LOOP = True
         if args.debug:
             config.DEBUG = True
         if args.env_check:
