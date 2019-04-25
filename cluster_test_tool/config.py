@@ -26,7 +26,7 @@ LOGIN_USER = None
 LOGIN_PASSWORD = None
 PASS_ASK = False
 MASK = False
-LOOP = 1
+LOOP = False
 DEBUG = False
 
 
