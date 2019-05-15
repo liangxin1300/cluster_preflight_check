@@ -1,20 +1,12 @@
 
-processes_name_want_to_kill = [
-    # (name, alias, expect, systemd service)
-    ('sbd', '', 'open', 'sbd'),
-    ('corosync', '', 'open', 'corosync'),
-    ('pacemakerd', '', 'restart', 'pacemaker'),
-    ('pacemaker-based', 'cib', 'Fence by other node', 'pacemaker'),
-    ('pacemaker-fenced', 'stonithd', 'restart', 'pacemaker'),
-    ('pacemaker-execd', 'lrmd', 'restart', 'pacemaker'),
-    ('pacemaker-attrd', 'attrd', 'restart', 'pacemaker'),
-    ('pacemaker-schedulerd', 'pengine', 'restart', 'pacemaker'),
-    ('pacemaker-controld', 'crmd', 'restart', 'pacemaker')
-]
-
-
 pacemaker2_daemons = ("pacemaker-based", "pacemaker-fenced", "pacemaker-execd",
                     "pacemaker-attrd", "pacemaker-schedulerd", "pacemaker-controld")
+
+expected_resources = {
+    'sbd':        ('Restart|Fenced', 'Fenced'),
+    'corosync':   ('Restart|Fenced', 'Fenced'),
+    'pacemakerd': ('Restart', None),
+}
 
 
 RESTART_TIMEOUT = 5
@@ -55,8 +47,3 @@ class Option(object):
         return "name: {}\nalias: {}\ncommand: {}\noption: {}\nhelp: {}\n\n".\
                format(self.name, self.alias, self.command, self.option, self.help)
 
-
-option_list = []
-for item in processes_name_want_to_kill:
-    if isinstance(item, tuple):
-        option_list.append(Option(*item))

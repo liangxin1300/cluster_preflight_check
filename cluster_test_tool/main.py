@@ -5,12 +5,18 @@ import argparse
 import functools
 import getpass
 import time
+import threading
 from datetime import datetime
 
 from . import check
 from . import config
 from . import pam
 from . import utils
+
+
+class Context(object):
+    def __setattr__(self, name, value):
+        super().__setattr__(name, value)
 
 
 def login(func):
@@ -38,10 +44,76 @@ def login(func):
     return login_func
 
 
-@login
-def kill_testcase(option):
-    print("Testcase:           Force Kill \"{}\"".format(option.name))
-    print("Systemd Controlled; {}".format(not config.MASK))
+def kill_testcase(context):
+    '''
+    --kill-sbd:           restarted or fenced
+    --kill-sbd -l         fenced
+    --kill-corosync       restarted or fenced
+    --kill-corosync -l    fenced
+    --kill-pacemakerd     restarted
+    --kill-pacemakerd -l  blocked by bsc#1111692
+    '''
+    def print_header(context):
+        print("Testcase:         Force Kill \"{}\"".format(context.current_kill))
+        print("Expected Result:  {}".format(context.expected))
+        print("Looping:          {}".format(context.loop))
+
+    def check_restarted(context):
+        count = 0
+        while count < 10:
+            rc, pid = utils.get_process_status(context.current_kill)
+            if rc:
+                utils.msg_info("Success! Process {}({}) is restarted!".format(context.current_kill, pid))
+                return
+            time.sleep(0.5)
+            count += 1
+        utils.msg_error("Process {} is not restarted!".format(context.current_kill))
+
+    def kill(context):
+        if "Fenced" in context.expected and not utils.fence_enabled():
+            utils.msg_error("stonith is not enabled!")
+            sys.exit(1)
+
+        thread_check = threading.Thread(target=utils.anyone_kill_me)
+
+        while True:
+            if not is_process_running(context):
+                continue
+
+            utils.msg_warn("Trying to run \"{}\"".format(context.cmd))
+            utils.run_cmd(context.cmd)
+
+            if not thread_check.is_alive():
+                thread_check.start()
+
+            if not context.loop:
+                break
+            # endless loop will lead to fence
+
+        check_restarted(context)
+
+
+    expected = {
+        'sbd':        ('Restart|Fenced', 'Fenced'),
+        'corosync':   ('Restart|Fenced', 'Fenced'),
+        'pacemakerd': ('Restart', None),
+    }
+
+    for case in ('sbd', 'corosync', 'pacemakerd'):
+        if getattr(context, case):
+            if case == 'pacemakerd' and context.loop:
+                return #blocked by bsc#1111692
+
+            context.current_kill = case
+            context.expected = expected[case][1] if context.loop else expected[case][0]
+            context.cmd = r'killall -9 {}'.format(case)
+
+            print_header(context)
+            if not utils.ask("Run?"):
+                return
+
+            kill(context)
+    """
     print("Expected Result:    {}".format(option.expect))
     print("Looping times:      {}".format(config.LOOP))
     if not utils.ask("Run?"):
@@ -71,7 +143,7 @@ def kill_testcase(option):
             continue
         else:
             break
-
+        """
 
 @login
 def fence_node(node):
@@ -128,17 +200,11 @@ def fence_node(node):
         sys.exit(1)
         
 
-def check_require(option):
-    rc, pid = utils.get_process_status(option.name)
+def is_process_running(context):
+    rc, pid = utils.get_process_status(context.current_kill)
     if not rc:
-        #utils.msg_error("Process {} is not running!".format(option.name))
         return False
-
-    utils.msg_info("Process {}({}) is running...".format(option.name, pid))
-
-    if option.expect.startswith("Fence"):
-        if not utils.is_fence_enabled():
-            return False
+    utils.msg_info("Process {}({}) is running...".format(context.current_kill, pid))
     return True
 
 
@@ -157,7 +223,6 @@ def after_run(option, fence_info):
                 return
             else:
                 count += 1
-    """
     if option.expect.startswith("Fence"):
         fence_action = fence_info[1]
         if not fence_action:
@@ -169,49 +234,65 @@ def after_run(option, fence_info):
         time.sleep(int(fence_timeout))
         utils.msg_error("Am I Still live?:(")
         sys.exit(1)
+    """
 
 
-def run():
+def parse_argument(context):
+    parser = argparse.ArgumentParser(description='Cluster Testing Tool Set',
+                                     allow_abbrev=False,
+                                     add_help=False)
+
+    parser.add_argument('-e', '--env-check', dest='env_check', action='store_true',
+                             help='Check environment')
+    parser.add_argument('-c', '--cluster-check', dest='cluster_check', action='store_true',
+                             help='Check cluster state')
+
+    group_kill = parser.add_mutually_exclusive_group()
+    group_kill.add_argument('--kill-sbd', dest='sbd', action='store_true',
+                            help='kill sbd daemon')
+    group_kill.add_argument('--kill-corosync', dest='corosync', action='store_true',
+                            help='kill corosync daemon')
+    group_kill.add_argument('--kill-pacemakerd', dest='pacemakerd', action='store_true',
+                            help='kill pacemakerd daemon')
+    parser.add_argument('-l', '--kill-loop', dest='loop', action='store_true',
+                            help='kill process in loop')
+
+    parser.add_argument('--fence-node', dest='fence_node', metavar='NODE',
+                             help='Fence specific node')
+
+    other_options = parser.add_argument_group('other options')
+    other_options.add_argument('-d', '--debug', dest='debug', action='store_true',
+                               help='Print verbose debugging information')
+    other_options.add_argument('-y', '--yes', dest='yes', action='store_true',
+                               help='Answer "yes" if asked to run the test')
+    other_options.add_argument('-u', dest='user', metavar='USER',
+                               help='User for login')
+    other_options.add_argument('-p', dest='password', metavar='PASSWORD',
+                               help='Password for login')
+    other_options.add_argument('-h', '--help', dest='help', action='store_true',
+                               help='show this help message and exit')
+
+    args = parser.parse_args()
+    if args.help:
+        parser.print_help()
+        sys.exit(0)
+    for arg in vars(args):
+        setattr(context, arg, getattr(args, arg))
+
+
+def run(context):
+    parse_argument(context)
+
     try:
-        parser = argparse.ArgumentParser(description='Cluster Testing Tool Set')
+        check.check(context)
+        kill_testcase(context)
+        #fence_node(ctx)
 
-        group_basic = parser.add_argument_group('Basic Check')
-        group_basic.add_argument('-e', '--env-check', dest='env_check', action="store_true",
-                                 help='Check environment')
-        group_basic.add_argument('-c', '--cluster-check', dest='cluster_check', action="store_true",
-                                 help='Check cluster state')
-
-        group_kill = parser.add_argument_group('Kill Process')
-        for option in config.option_list:
-            group_kill.add_argument(option.option,
-                                    help=option.help,
-                                    dest=option.dest,
-                                    action="store_true")
-        group_kill.add_argument('-m', '--mask-service', dest='mask', action="store_true",
-                                help='mask related systemd service')
-        group_kill.add_argument('-l', '--kill-loop', dest='loop', action="store_true",
-                                help='kill process in loop')
-
-        group_fence = parser.add_argument_group('Fence Node')
-        group_fence.add_argument('--fence-node',
-                                 help='Fence specific node',
-                                 dest='fence_node',
-                                 metavar='NODE')
-
-        other_options = parser.add_argument_group('Other Options')
-        other_options.add_argument('-d', '--debug', dest='debug', action='store_true',
-                                   help='Print verbose debugging information')
-        other_options.add_argument('-y', '--yes', dest='yes', action='store_true',
-                                   help='Answer "yes" if asked to run the test')
-        other_options.add_argument('-u', dest='user', metavar='USER',
-                                   help='User for login')
-        other_options.add_argument('-p', dest='password', metavar='PASSWORD',
-                                   help='Password for login')
-
-        args = parser.parse_args()
-
-        if len(sys.argv) == 1:
-            return
+    except KeyboardInterrupt:
+        print("\nCtrl-C, leaving")
+        sys.exit(1)
+    """
+    try:
 
         if args.yes:
             config.PASS_ASK = True
@@ -238,6 +319,6 @@ def run():
         if args.fence_node:
             return fence_node(args.fence_node)
 
-    except KeyboardInterrupt:
-        print("\nCtrl-C, leaving")
-        sys.exit(1)
+    """
+
+ctx = Context()
