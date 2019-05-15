@@ -3,6 +3,13 @@ import re
 from . import utils
 
 
+def check(context):
+    if context.env_check:
+        check_environment()
+    if context.cluster_check:
+        check_cluster()
+
+
 def check_environment():
     print("============Checking environment============")
     check_my_hostname_resolves()
@@ -95,7 +102,7 @@ def check_cluster_service():
 def check_fencing():
     task = utils.TaskInfo("Checking Stonith/Fence")
 
-    if utils.is_fence_enabled():
+    if utils.fence_enabled():
         task.info_append("stonith-enabled is \"true\"")
     else:
         task.warn_append("stonith is disabled")

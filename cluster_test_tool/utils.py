@@ -1,6 +1,8 @@
 import subprocess
 import os
 import re
+import time
+import socket
 from datetime import datetime
 
 
@@ -10,8 +12,12 @@ CGREEN = '\033[32m'
 CEND = '\033[0m'
 
 
+def me():
+    return socket.gethostname()
+
+
 def now():
-    return "[{}]".format(datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
+    return datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
 
 def msg_str(msg_type, msg, prefix="now"):
@@ -24,7 +30,7 @@ def msg_str(msg_type, msg, prefix="now"):
     if msg_type == "error":
         color = CRED
     if prefix == "now":
-        prefix = now()
+        prefix = "[{}]".format(now())
     return "{}{}{}:{} {}".format(prefix, color, msg_type.upper(), CEND, msg)
  
 
@@ -41,8 +47,8 @@ def msg_error(msg):
 
 
 def msg_debug(msg):
-    from . import config
-    if config.DEBUG:
+    from . import main
+    if main.ctx.debug:
         print(msg_str("debug", msg))
 
 
@@ -92,8 +98,8 @@ def to_ascii(s):
 
 
 def ask(msg):
-    from . import config
-    if config.PASS_ASK:
+    from . import main
+    if main.ctx.yes:
         return True
     msg += ' '
     if msg.endswith('? '):
@@ -195,7 +201,7 @@ def get_fence_action():
     return fence_action
 
 
-def is_fence_enabled():
+def fence_enabled():
     fence_enabled = get_property('stonith-enabled')
     if fence_enabled and fence_enabled.lower() == "true":
         return True
@@ -290,3 +296,22 @@ def which(prog):
 def this_node():
     'returns name of this node (hostname)'
     return os.uname()[1]
+
+
+def anyone_kill_me():
+    count = 0
+    while count < 10:
+        rc, out, _ = run_cmd("crm_mon -1|grep \"^Online:.* {} \"".format(me()))
+        if rc == 0:
+            msg_debug("I({}) am online".format(me()))
+            break
+
+        rc, out, _ = run_cmd("crm_mon -1|grep -A1 \"Fencing Actions:\"")
+        if rc == 0:
+            match = re.search(r"of (.*) pending: .*origin=(.*)$", out)
+            if match.group(1) == me():
+                msg_warn("I({}) will be fenced by {}!".format(match.group(1), match.group(2)))
+                break
+
+        time.sleep(1)
+        count += 1
