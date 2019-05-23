@@ -113,39 +113,8 @@ def kill_testcase(context):
                 return
 
             kill(context)
-    """
-    print("Expected Result:    {}".format(option.expect))
-    print("Looping times:      {}".format(config.LOOP))
-    if not utils.ask("Run?"):
-        return
-    print()
 
-    looping_count = 0
-    while True:
-        if not check_require(option):
-            continue
 
-        fence_info = ()
-        if option.expect.startswith("Fence"):
-            fence_info = utils.get_fence_info()
-
-        if config.MASK:
-            utils.msg_warn("Running \"{}\"".format(option.mask_cmd))
-            utils.run_cmd(option.mask_cmd)
-
-        utils.msg_warn("Trying to run \"{}\"".format(option.command))
-        print('')
-        utils.run_cmd(option.command)
-        after_run(option, fence_info)
-
-        looping_count += 1
-        if config.LOOP:
-            continue
-        else:
-            break
-        """
-
-@login
 def fence_node(node):
     print("Testcase:        Fence node \"{}\"".format(node))
 
@@ -208,35 +177,6 @@ def is_process_running(context):
     return True
 
 
-def after_run(option, fence_info):
-    """
-    if option.expect in ("restart", "open"):
-        count = 0
-        while count <= config.RESTART_TIMEOUT:
-            time.sleep(0.1)
-            rc, pid = utils.get_process_status(option.name)
-            if rc:
-                utils.msg_info("Success! Process {}({}) is restarted!".format(option.name, pid))
-                if config.MASK:
-                    utils.msg_info("Running \"{}\"".format(option.unmask_cmd))
-                    utils.run_cmd(option.unmask_cmd)
-                return
-            else:
-                count += 1
-    if option.expect.startswith("Fence"):
-        fence_action = fence_info[1]
-        if not fence_action:
-            sys.exit(1)
-        fence_timeout = fence_info[2]
-        if fence_timeout is None:
-            fence_timeout = config.FENCE_TIMEOUT
-        utils.msg_info("Waiting {}s for self {}...".format(fence_timeout, fence_action))
-        time.sleep(int(fence_timeout))
-        utils.msg_error("Am I Still live?:(")
-        sys.exit(1)
-    """
-
-
 def parse_argument(context):
     parser = argparse.ArgumentParser(description='Cluster Testing Tool Set',
                                      allow_abbrev=False,
@@ -265,10 +205,12 @@ def parse_argument(context):
                                help='Print verbose debugging information')
     other_options.add_argument('-y', '--yes', dest='yes', action='store_true',
                                help='Answer "yes" if asked to run the test')
+    '''
     other_options.add_argument('-u', dest='user', metavar='USER',
                                help='User for login')
     other_options.add_argument('-p', dest='password', metavar='PASSWORD',
                                help='Password for login')
+    '''
     other_options.add_argument('-h', '--help', dest='help', action='store_true',
                                help='show this help message and exit')
 
@@ -291,34 +233,6 @@ def run(context):
     except KeyboardInterrupt:
         print("\nCtrl-C, leaving")
         sys.exit(1)
-    """
-    try:
 
-        if args.yes:
-            config.PASS_ASK = True
-        if args.user:
-            config.LOGIN_USER = args.user
-        if args.password:
-            config.LOGIN_PASSWORD = args.password
-        if args.mask:
-            config.MASK = True
-        if args.loop:
-            config.LOOP = True
-        if args.debug:
-            config.DEBUG = True
-        if args.env_check:
-            check.check_environment()
-        if args.cluster_check:
-            check.check_cluster()
-        if not utils.is_cluster_running():
-            utils.msg_error("cluster is not running!")
-            sys.exit(1)
-        for option in config.option_list:
-            if hasattr(args, option.dest) and getattr(args, option.dest):
-                kill_testcase(option)
-        if args.fence_node:
-            return fence_node(args.fence_node)
-
-    """
 
 ctx = Context()
