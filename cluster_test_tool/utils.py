@@ -203,10 +203,7 @@ def get_fence_action():
 
 def fence_enabled():
     fence_enabled = get_property('stonith-enabled')
-    if fence_enabled and fence_enabled.lower() == "true":
-        return True
-    else:
-        return False
+    return fence_enabled and fence_enabled.lower() == "true"
 
 
 def get_fence_timeout():
@@ -220,14 +217,10 @@ def get_fence_timeout():
 
 
 def get_fence_info():
-    fence_enabled = False
-    if is_fence_enabled():
-        fence_enabled = True
-    else:
-        msg_warn("Cluster property \"stonith-enabled\" should be set \"true\"")
-    fence_action = get_fence_action()
-    fence_timeout = get_fence_timeout()
-    return (fence_enabled, fence_action, fence_timeout)
+    enabled = True if fence_enabled() else False
+    action = get_fence_action()
+    timeout = get_fence_timeout()
+    return (enabled, action, timeout)
 
 
 def check_node_status(node, state):
@@ -298,19 +291,19 @@ def this_node():
     return os.uname()[1]
 
 
-def anyone_kill_me():
+def anyone_kill(node, timeout=10):
     count = 0
-    while count < 10:
-        rc, out, _ = run_cmd("crm_mon -1|grep \"^Online:.* {} \"".format(me()))
+    while count < int(timeout):
+        rc, out, _ = run_cmd("crm_mon -1|grep \"^Online:.* {} \"".format(node))
         if rc == 0:
-            msg_debug("I({}) am online".format(me()))
+            msg_debug("Node \"{}\" is online".format(node))
             break
 
         rc, out, _ = run_cmd("crm_mon -1|grep -A1 \"Fencing Actions:\"")
         if rc == 0:
             match = re.search(r"of (.*) pending: .*origin=(.*)$", out)
-            if match.group(1) == me():
-                msg_warn("I({}) will be fenced by {}!".format(match.group(1), match.group(2)))
+            if match.group(1) == node:
+                msg_warn("Node \"{}\" will be fenced by \"{}\"!".format(match.group(1), match.group(2)))
                 break
 
         time.sleep(1)

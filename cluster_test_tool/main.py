@@ -63,7 +63,7 @@ def kill_testcase(context):
         while count < 10:
             rc, pid = utils.get_process_status(context.current_kill)
             if rc:
-                utils.msg_info("Success! Process {}({}) is restarted!".format(context.current_kill, pid))
+                utils.msg_info("Process {}({}) is restarted!".format(context.current_kill, pid))
                 return
             time.sleep(0.5)
             count += 1
@@ -74,8 +74,6 @@ def kill_testcase(context):
             utils.msg_error("stonith is not enabled!")
             sys.exit(1)
 
-        thread_check = threading.Thread(target=utils.anyone_kill_me)
-
         while True:
             if not is_process_running(context):
                 continue
@@ -83,13 +81,12 @@ def kill_testcase(context):
             utils.msg_warn("Trying to run \"{}\"".format(context.cmd))
             utils.run_cmd(context.cmd)
 
-            if not thread_check.is_alive():
-                thread_check.start()
-
             if not context.loop:
                 break
             # endless loop will lead to fence
 
+        thread_check = threading.Thread(target=utils.anyone_kill, args=(utils.me(), ))
+        thread_check.start()
         check_restarted(context)
 
 
@@ -115,8 +112,9 @@ def kill_testcase(context):
             kill(context)
 
 
-def fence_node(node):
-    print("Testcase:        Fence node \"{}\"".format(node))
+def fence_node(context):
+    if not context.fence_node:
+        return
 
     # check required commands exists
     required_commands = ['crm_node', 'stonith_admin', 'crm_attribute']
@@ -124,14 +122,16 @@ def fence_node(node):
         if not utils.which(cmd):
             sys.exit(1)
 
+    node = context.fence_node
     # check crm_node command
     if not utils.check_node_status(node, 'member'):
-        utils.msg_error("\"{}\" not in cluster!".format(node))
+        utils.msg_error("Node \"{}\" not in cluster!".format(node))
         sys.exit(1)
 
     fence_enabled, fence_action, fence_timeout = utils.get_fence_info()
     # check whether stonith is enabled
     if not fence_enabled:
+        utils.msg_error("stonith is not enabled!")
         sys.exit(1)
     # get stonith action
     if not fence_action:
@@ -139,35 +139,38 @@ def fence_node(node):
     if not fence_timeout:
         fence_timeout = config.FENCE_TIMEOUT
 
+    print("Testcase:        Fence node \"{}\"".format(node))
     print("Expect Result:   {}".format(fence_action))
-    print()
+    print("Fence Timeout:   {}".format(fence_timeout))
     if not utils.ask("Run?"):
         return
+    utils.msg_warn("Trying to fence node \"{}\"".format(node))
 
-    import socket
-    if node == socket.gethostname():
+    thread_check = threading.Thread(target=utils.anyone_kill, args=(node, fence_timeout))
+    utils.run_cmd(config.FENCE_NODE.format(node), wait=False)
+    if node == utils.me():
         # fence self
-        utils.run_cmd(config.FENCE_SELF.format(node), wait=False)
         utils.msg_info("Waiting {}s for self {}...".format(fence_timeout, fence_action))
+        thread_check.start()
+
         time.sleep(int(fence_timeout))
         utils.msg_error("Am I Still live?:(")
         sys.exit(1)
     else:
         # fence other node
-        utils.run_cmd(config.FENCE_NODE.format(node), wait=False)
-        run_time = datetime.now().strftime("%s")
         utils.msg_info("Waiting {}s for node \"{}\" {}...".format(fence_timeout, node, fence_action))
+        thread_check.start()
+
         count = 0
         while count < int(fence_timeout):
-            time.sleep(1)
-            count += 1
-            if utils.do_fence_happen(node, run_time) and \
-               utils.check_node_status(node, 'lost'):
+            if utils.check_node_status(node, 'lost'):
                 utils.msg_info("Node \"{}\" has been fenced successfully".format(node))
                 return
-        utils.msg_error("Node {} Still live?:(".format(node))
+            time.sleep(1)
+            count += 1
+        utils.msg_error("Node \"{}\" Still alive?:(".format(node))
         sys.exit(1)
-        
+
 
 def is_process_running(context):
     rc, pid = utils.get_process_status(context.current_kill)
@@ -183,22 +186,21 @@ def parse_argument(context):
                                      add_help=False)
 
     parser.add_argument('-e', '--env-check', dest='env_check', action='store_true',
-                             help='Check environment')
+                        help='Check environment')
     parser.add_argument('-c', '--cluster-check', dest='cluster_check', action='store_true',
-                             help='Check cluster state')
+                        help='Check cluster state')
 
-    group_kill = parser.add_mutually_exclusive_group()
-    group_kill.add_argument('--kill-sbd', dest='sbd', action='store_true',
-                            help='kill sbd daemon')
-    group_kill.add_argument('--kill-corosync', dest='corosync', action='store_true',
-                            help='kill corosync daemon')
-    group_kill.add_argument('--kill-pacemakerd', dest='pacemakerd', action='store_true',
-                            help='kill pacemakerd daemon')
+    group_mutual = parser.add_mutually_exclusive_group()
+    group_mutual.add_argument('--kill-sbd', dest='sbd', action='store_true',
+                              help='kill sbd daemon')
+    group_mutual.add_argument('--kill-corosync', dest='corosync', action='store_true',
+                              help='kill corosync daemon')
+    group_mutual.add_argument('--kill-pacemakerd', dest='pacemakerd', action='store_true',
+                              help='kill pacemakerd daemon')
+    group_mutual.add_argument('--fence-node', dest='fence_node', metavar='NODE',
+                              help='Fence specific node')
     parser.add_argument('-l', '--kill-loop', dest='loop', action='store_true',
-                            help='kill process in loop')
-
-    parser.add_argument('--fence-node', dest='fence_node', metavar='NODE',
-                             help='Fence specific node')
+                        help='kill process in loop')
 
     other_options = parser.add_argument_group('other options')
     other_options.add_argument('-d', '--debug', dest='debug', action='store_true',
@@ -228,7 +230,7 @@ def run(context):
     try:
         check.check(context)
         kill_testcase(context)
-        #fence_node(ctx)
+        fence_node(context)
 
     except KeyboardInterrupt:
         print("\nCtrl-C, leaving")
