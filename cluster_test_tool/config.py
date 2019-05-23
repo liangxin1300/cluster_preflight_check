@@ -11,8 +11,8 @@ expected_resources = {
 
 RESTART_TIMEOUT = 5
 FENCE_TIMEOUT = 60
-FENCE_SELF = "crm_attribute -t status -N '{}' -n terminate -v true"
-FENCE_NODE = "stonith_admin -F '{}'"
+FENCE_NODE = "crm_attribute -t status -N '{}' -n terminate -v true"
+#FENCE_NODE = "stonith_admin -F '{}'"
 LOGIN = False
 LOGIN_USER = None
 LOGIN_PASSWORD = None
