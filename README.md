@@ -1,10 +1,10 @@
 # clusterTestTool
 
 ## Install
-pip3 install cluster_test_tool
+pip3 install cluster-test-tool
 
 ## Use
 cluster-test-tool --help
 
 ## Demo
-https://asciinema.org/a/237529
+https://asciinema.org/a/248538
