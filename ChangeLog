@@ -1,5 +1,5 @@
 * Mon May 27 2019 Xin Liang <XLiang@suse.com>
-- Version 0.0.19
+- Version 0.0.20
 - Python3 only
 - Check environment: hostname resolvable
 - Check environment: time service 
