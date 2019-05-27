@@ -1,0 +1,15 @@
+* Mon May 27 2019 Xin Liang <XLiang@suse.com>
+- Version 0.0.19
+- Python3 only
+- Check environment: hostname resolvable
+- Check environment: time service 
+- Check environment: watchdog
+- Check cluster: cluster service
+- Check cluster: stonith configuration
+- Check cluster: nodes status
+- Check cluster: resources status
+- Kill sbd daemon
+- Kill corosync daemon
+- Kill pacemakerd daemon
+- Kill process in loop
+- Fence specific node
