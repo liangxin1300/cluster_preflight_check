@@ -2,14 +2,14 @@ import setuptools
 
 setuptools.setup(
     name="cluster_test_tool",
-    version="0.0.16",
+    version="0.0.19",
     author="Xin Liang",
     author_email="XLiang@suse.com",
     url="https://github.com/liangxin1300/clusterTestTool",
     license="BSD",
     packages=setuptools.find_packages(),
     description="Tool for Standardize Testing of Basic Cluster Functionality",
-    scripts=['bin/cluster_test_tool'],
+    scripts=['bin/cluster-test-tool'],
     classifiers=[
           "Development Status :: 3 - Alpha",
           "Intended Audience :: System Administrators",
