@@ -54,9 +54,10 @@ def kill_testcase(context):
     --kill-pacemakerd -l  blocked by bsc#1111692
     '''
     def print_header(context):
-        print("Testcase:         Force Kill \"{}\"".format(context.current_kill))
-        print("Expected Result:  {}".format(context.expected))
-        print("Looping:          {}".format(context.loop))
+        print("Testcase:          Force Kill \"{}\"".format(context.current_kill))
+        print("Expected Results:  {}".format(context.expected))
+        print("Looping:           {}".format(context.loop))
+        print(context.note)
 
     def check_restarted(context):
         count = 0
@@ -91,10 +92,15 @@ def kill_testcase(context):
 
 
     expected = {
-        'sbd':        ('Restart|Fenced', 'Fenced'),
-        'corosync':   ('Restart|Fenced', 'Fenced'),
-        'pacemakerd': ('Restart', None),
+        'sbd':        ('''a) sbd process restarted
+                   b) This node fenced.''', 'This node fenced'),
+        'corosync':   ('''a) corosync process restarted
+                   b) This node fenced.''', 'This node fenced'),
+        'pacemakerd': ('pacemakerd process restarted', None),
     }
+
+    note = '''\nNOTE: The final report will explain the cluster behavior according to each test case.
+      Some behavior might be not so obvious, and could be a bit complex indeed.'''
 
     for case in ('sbd', 'corosync', 'pacemakerd'):
         if getattr(context, case):
@@ -104,6 +110,7 @@ def kill_testcase(context):
             context.current_kill = case
             context.expected = expected[case][1] if context.loop else expected[case][0]
             context.cmd = r'killall -9 {}'.format(case)
+            context.note = note
 
             print_header(context)
             if not utils.ask("Run?"):
@@ -139,9 +146,9 @@ def fence_node(context):
     if not fence_timeout:
         fence_timeout = config.FENCE_TIMEOUT
 
-    print("Testcase:        Fence node \"{}\"".format(node))
-    print("Expect Result:   {}".format(fence_action))
-    print("Fence Timeout:   {}".format(fence_timeout))
+    print("Testcase:         Fence node \"{}\"".format(node))
+    print("Expect Results:   {}".format(fence_action))
+    print("Fence Timeout:    {}".format(fence_timeout))
     if not utils.ask("Run?"):
         return
     utils.msg_warn("Trying to fence node \"{}\"".format(node))
