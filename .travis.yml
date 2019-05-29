@@ -15,6 +15,6 @@ jobs:
         - docker exec -t hanode1 /bin/sh -c "crm cluster init -y"
         - docker exec -t hanode1 /bin/sh -c "crm_mon -1"
         - docker run -d --name=hanode2 --hostname hanode2 --privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro liangxin1300/haleap:42.3
-        - docker exec -t hanode2 /bin/sh -c "zypper -n install crmsh pacemaker corosync iproute2 which iputils vim tar bzip2"
+        - docker exec -t hanode2 /bin/sh -c "zypper -n install crmsh pacemaker corosync iproute2 which iputils vim tar bzip2 hostname"
         - docker exec -t hanode2 /bin/sh -c "crm cluster init -y"
         - docker exec -t hanode2 /bin/sh -c "crm_mon -1"
