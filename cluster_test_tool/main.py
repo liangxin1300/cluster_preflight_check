@@ -53,49 +53,43 @@ def kill_testcase(context):
     --kill-pacemakerd     restarted
     --kill-pacemakerd -l  blocked by bsc#1111692
     '''
-    def print_header(context):
-        print("Testcase:          Force Kill \"{}\"".format(context.current_kill))
-        print("Expected Results:  {}".format(context.expected))
-        print("Looping:           {}".format(context.loop))
-        print(context.note)
-
-    def check_restarted(context):
+    def check_restarted(context, task):
         count = 0
         while count < 10:
             rc, pid = utils.get_process_status(context.current_kill)
             if rc:
-                utils.msg_info("Process {}({}) is restarted!".format(context.current_kill, pid))
+                task.info_append("Process {}({}) is restarted!".format(context.current_kill, pid))
                 return
             time.sleep(0.5)
             count += 1
-        utils.msg_error("Process {} is not restarted!".format(context.current_kill))
+        task.error_append("Process {} is not restarted!".format(context.current_kill))
 
-    def kill(context):
+    def kill(context, task):
         if "Fenced" in context.expected and not utils.fence_enabled():
-            utils.msg_error("stonith is not enabled!")
+            task.error_append("stonith is not enabled!")
             sys.exit(1)
 
         while True:
-            if not is_process_running(context):
+            if not is_process_running(context, task):
                 continue
 
-            utils.msg_warn("Trying to run \"{}\"".format(context.cmd))
+            task.info_append("Trying to run \"{}\"".format(context.cmd))
             utils.run_cmd(context.cmd)
 
             if not context.loop:
                 break
             # endless loop will lead to fence
 
-        thread_check = threading.Thread(target=utils.anyone_kill, args=(utils.me(), ))
+        thread_check = threading.Thread(target=utils.anyone_kill, args=(utils.me(), task))
         thread_check.start()
-        check_restarted(context)
+        check_restarted(context, task)
 
 
     expected = {
         'sbd':        ('''a) sbd process restarted
-                   b) This node fenced.''', 'This node fenced'),
+                   b) Or, this node fenced.''', 'This node fenced'),
         'corosync':   ('''a) corosync process restarted
-                   b) This node fenced.''', 'This node fenced'),
+                   b) Or, this node fenced.''', 'This node fenced'),
         'pacemakerd': ('pacemakerd process restarted', None),
     }
 
@@ -112,11 +106,15 @@ def kill_testcase(context):
             context.cmd = r'killall -9 {}'.format(case)
             context.note = note
 
-            print_header(context)
+            task = utils.TaskKill("Force kill {}".format(context.current_kill),
+                                  expected=context.expected,
+                                  looping=context.loop)
+            task.print_header()
             if not utils.ask("Run?"):
+                task.info_append("Testcase cancelled")
                 return
 
-            kill(context)
+            kill(context, task)
 
 
 def fence_node(context):
@@ -179,18 +177,21 @@ def fence_node(context):
         sys.exit(1)
 
 
-def is_process_running(context):
+def is_process_running(context, task):
     rc, pid = utils.get_process_status(context.current_kill)
     if not rc:
         return False
-    utils.msg_info("Process {}({}) is running...".format(context.current_kill, pid))
+    task.info_append("Process {}({}) is running...".format(context.current_kill, pid))
     return True
 
 
 def parse_argument(context):
     parser = argparse.ArgumentParser(description='Cluster Testing Tool Set',
                                      allow_abbrev=False,
-                                     add_help=False)
+                                     add_help=False,
+                                     epilog='''
+                                            Json results will at: {}
+                                            '''.format(context.jsonfile))
 
     parser.add_argument('-e', '--env-check', dest='env_check', action='store_true',
                         help='Check environment')
@@ -199,15 +200,15 @@ def parse_argument(context):
 
     group_mutual = parser.add_mutually_exclusive_group()
     group_mutual.add_argument('--kill-sbd', dest='sbd', action='store_true',
-                              help='kill sbd daemon')
+                              help='Kill sbd daemon')
     group_mutual.add_argument('--kill-corosync', dest='corosync', action='store_true',
-                              help='kill corosync daemon')
+                              help='Kill corosync daemon')
     group_mutual.add_argument('--kill-pacemakerd', dest='pacemakerd', action='store_true',
-                              help='kill pacemakerd daemon')
+                              help='Kill pacemakerd daemon')
     group_mutual.add_argument('--fence-node', dest='fence_node', metavar='NODE',
                               help='Fence specific node')
     parser.add_argument('-l', '--kill-loop', dest='loop', action='store_true',
-                        help='kill process in loop')
+                        help='Kill process in loop')
 
     other_options = parser.add_argument_group('other options')
     other_options.add_argument('-d', '--debug', dest='debug', action='store_true',
@@ -232,14 +233,18 @@ def parse_argument(context):
 
 
 def run(context):
+    context.tasks = []
+    context.jsonfile = "/var/lib/{}/{}-out.json".format(context.name, context.name)
     parse_argument(context)
 
     try:
         check.check(context)
+        print()
         kill_testcase(context)
         fence_node(context)
 
     except KeyboardInterrupt:
+        utils.json_dumps()
         print("\nCtrl-C, leaving")
         sys.exit(1)
 

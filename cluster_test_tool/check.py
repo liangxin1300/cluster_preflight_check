@@ -11,16 +11,15 @@ def check(context):
 
 
 def check_environment():
-    print("============Checking environment============")
+    print("\n============ Checking environment ============")
     check_my_hostname_resolves()
     check_time_service()
     check_watchdog()
-    print()
     #check_firewall()
 
 
 def check_my_hostname_resolves():
-    task = utils.TaskInfo("Checking hostname resolvable")
+    task = utils.TaskCheck("Checking hostname resolvable")
 
     hostname = utils.this_node()
     try:
@@ -34,7 +33,7 @@ def check_my_hostname_resolves():
 
 
 def check_time_service():
-    task = utils.TaskInfo("Checking time service")
+    task = utils.TaskCheck("Checking time service")
 
     timekeepers = ('chronyd.service', 'ntp.service', 'ntpd.service')
     timekeeper = None
@@ -64,7 +63,7 @@ def check_watchdog():
     """
     Verify watchdog device. Fall back to /dev/watchdog.
     """
-    task = utils.TaskInfo("Checking watchdog")
+    task = utils.TaskCheck("Checking watchdog")
 
     watchdog_dev = utils.detect_watchdog_device()
     rc, _, _ = utils.run_cmd('lsmod | egrep "(wd|dog)"')
@@ -74,17 +73,16 @@ def check_watchdog():
 
 
 def check_cluster():
-    print("============Checking cluster state============")
+    print("\n============ Checking cluster state ============")
     if not check_cluster_service():
         return
     check_fencing()
     check_nodes()
     check_resources()
-    print()
 
 
 def check_cluster_service():
-    task = utils.TaskInfo("Checking cluster service")
+    task = utils.TaskCheck("Checking cluster service")
     for s in ("corosync", "pacemaker"):
         if utils.service_is_enabled(s):
             task.info_append("{} is enabled".format(s))
@@ -100,7 +98,7 @@ def check_cluster_service():
 
 
 def check_fencing():
-    task = utils.TaskInfo("Checking Stonith/Fence")
+    task = utils.TaskCheck("Checking STONITH/Fence")
 
     if utils.fence_enabled():
         task.info_append("stonith-enabled is \"true\"")
@@ -136,7 +134,7 @@ def check_fencing():
 
 
 def check_nodes():
-    task = utils.TaskInfo("Checking nodes")
+    task = utils.TaskCheck("Checking nodes")
 
     cmd_awk = """awk '$1=="Current"||$1=="Online:"||$1=="OFFLINE:"||$3=="UNCLEAN"{print $0}'"""
     cmd = r'crm_mon -r1 | {}'.format(cmd_awk)
@@ -173,7 +171,7 @@ def check_nodes():
 
 
 def check_resources():
-    task = utils.TaskInfo("Checking resources")
+    task = utils.TaskCheck("Checking resources")
 
     awk_stop = """awk '$3=="Stopped"||$0~/FAILED/{print $0}' | wc -l"""
     awk_start = """awk '$3=="Started"{print $0}' | wc -l"""

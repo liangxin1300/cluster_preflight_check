@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 from cluster_test_tool import main
+import os
 
 if __name__ == '__main__':
+    main.ctx.name = os.path.basename(__file__)
     main.run(main.ctx)

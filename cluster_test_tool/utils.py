@@ -3,6 +3,7 @@ import os
 import re
 import time
 import socket
+import json
 from datetime import datetime
 
 
@@ -20,7 +21,7 @@ def now():
     return datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
 
-def msg_str(msg_type, msg, prefix="now"):
+def msg_str(msg_type, msg, timestamp=None, prefix=''):
     if msg_type not in ("info", "warn", "error", "debug"):
         raise TypeError("msg_type must be info|warn|error|debug")
 
@@ -29,21 +30,21 @@ def msg_str(msg_type, msg, prefix="now"):
         color = CYELLOW
     if msg_type == "error":
         color = CRED
-    if prefix == "now":
-        prefix = "[{}]".format(now())
+    if timestamp:
+        prefix += "[{}]".format(timestamp)
     return "{}{}{}:{} {}".format(prefix, color, msg_type.upper(), CEND, msg)
  
 
 def msg_info(msg):
-    print(msg_str("info", msg))
+    print(msg_str("info", msg, timestamp=now()))
 
 
 def msg_warn(msg):
-    print(msg_str("warn", msg))
+    print(msg_str("warn", msg, timestamp=now()))
 
 
 def msg_error(msg):
-    print(msg_str("error", msg))
+    print(msg_str("error", msg, timestamp=now()))
 
 
 def msg_debug(msg):
@@ -52,12 +53,27 @@ def msg_debug(msg):
         print(msg_str("debug", msg))
 
 
-class TaskInfo(object):
+def json_dumps():
+    from . import main
+    with open(main.ctx.jsonfile, 'w') as f:
+        f.write(json.dumps(main.ctx.tasks, indent=2))
 
-    def  __init__(self, description):
+
+class Task(object):
+
+    def __init__(self, description):
         self.passed = True
         self.messages = []
+        self.timestamp = now()
         self.description = description
+
+    def msg_append(self, msg_type, msg):
+        if msg_type in ("warn", "error"):
+            self.passed = False
+        self.messages.append((msg_type, msg, now()))
+
+
+class TaskCheck(Task):
 
     def info_append(self, msg):
         self.msg_append("info", msg)
@@ -68,20 +84,82 @@ class TaskInfo(object):
     def error_append(self, msg):
         self.msg_append("error", msg)
 
-    def msg_append(self, msg_type, msg):
-        if msg_type in ("warn", "error"):
-            self.passed = False
-        self.messages.append((msg_type, msg))
-
-    def print_result(self):
-        print(msg_str("info", self.description), end=' ')
+    def to_stdout(self):
+        print(msg_str("info", self.description, self.timestamp), end=' ')
         if self.passed:
-            print("[{}]".format(CGREEN + "Passed" + CEND))
+            print("[{}]".format(CGREEN + "Pass" + CEND))
         else:
-            print("[{}]".format(CRED + "Not Passed" + CEND))
+            print("[{}]".format(CRED + "Fail" + CEND))
         
         for msg in self.messages:
             print(msg_str(msg[0], msg[1], prefix='  '))
+
+    def to_json(self):
+        import json
+
+        result = {
+            "Timestamp": self.timestamp,
+            "Description": self.description,
+            "Result": self.passed,
+            "Messages": ["{} {}:{}".format(m[2], m[0].upper(), m[1])
+                         for m in self.messages]
+        }
+        from . import main
+        main.ctx.tasks.append(result)
+        json_dumps()
+
+    def print_result(self):
+        self.to_stdout()
+        self.to_json()
+
+
+class TaskKill(Task):
+
+    def  __init__(self, description, expected, looping):
+        super(self.__class__, self).__init__(description)
+        self.expected = expected
+        self.looping = looping
+        from . import main
+        self.prev_tasks = main.ctx.tasks
+
+    def print_header(self):
+        header = '''Testcase:          {}
+Looping Kill:      {}
+Expected State:    {}
+'''.format(self.description, self.looping, self.expected)
+        print("==============================================")
+        print(header)
+        self.to_json()
+
+    def info_append(self, msg):
+        self.msg_append("info", msg)
+        msg_info(msg)
+        self.to_json()
+
+    def warn_append(self, msg):
+        self.msg_append("warn", msg)
+        msg_warn(msg)
+        self.to_json()
+
+    def error_append(self, msg):
+        self.msg_append("error", msg)
+        msg_error(msg)
+        self.to_json()
+
+    def to_json(self):
+        import json
+
+        result = {
+            "Timestamp": self.timestamp,
+            "Description": self.description,
+            "Looping Kill": self.looping,
+            "Expected State": self.expected,
+            "Messages": ["{} {}:{}".format(m[2], m[0].upper(), m[1])
+                         for m in self.messages]
+        }
+        from . import main
+        main.ctx.tasks = self.prev_tasks + [result]
+        json_dumps()
 
 
 def to_ascii(s):
@@ -291,7 +369,7 @@ def this_node():
     return os.uname()[1]
 
 
-def anyone_kill(node, timeout=10):
+def anyone_kill(node, task, timeout=10):
     count = 0
     while count < int(timeout):
         rc, out, _ = run_cmd("crm_mon -1|grep \"^Online:.* {} \"".format(node))
@@ -303,7 +381,7 @@ def anyone_kill(node, timeout=10):
         if rc == 0:
             match = re.search(r"of (.*) pending: .*origin=(.*)$", out)
             if match.group(1) == node:
-                msg_warn("Node \"{}\" will be fenced by \"{}\"!".format(match.group(1), match.group(2)))
+                task.info_append("Node \"{}\" will be fenced by \"{}\"!".format(match.group(1), match.group(2)))
                 break
 
         time.sleep(1)
