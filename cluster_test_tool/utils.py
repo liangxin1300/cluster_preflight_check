@@ -4,6 +4,7 @@ import re
 import time
 import socket
 import json
+import logging
 from datetime import datetime
 
 
@@ -66,6 +67,7 @@ class Task(object):
         self.messages = []
         self.timestamp = now()
         self.description = description
+        logging.info(description)
 
     def msg_append(self, msg_type, msg):
         if msg_type in ("warn", "error"):
@@ -77,12 +79,15 @@ class TaskCheck(Task):
 
     def info_append(self, msg):
         self.msg_append("info", msg)
+        logging.info(msg)
 
     def warn_append(self, msg):
         self.msg_append("warn", msg)
+        logging.warning(msg)
 
     def error_append(self, msg):
         self.msg_append("error", msg)
+        logging.error(msg)
 
     def to_stdout(self):
         print(msg_str("info", self.description, self.timestamp), end=' ')
@@ -133,16 +138,19 @@ Expected State:    {}
 
     def info_append(self, msg):
         self.msg_append("info", msg)
+        logging.info(msg)
         msg_info(msg)
         self.to_json()
 
     def warn_append(self, msg):
         self.msg_append("warn", msg)
+        logging.warning(msg)
         msg_warn(msg)
         self.to_json()
 
     def error_append(self, msg):
         self.msg_append("error", msg)
+        logging.error(msg)
         msg_error(msg)
         self.to_json()
 

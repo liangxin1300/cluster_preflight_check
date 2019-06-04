@@ -6,6 +6,7 @@ import functools
 import getpass
 import time
 import threading
+import logging
 from datetime import datetime
 
 from . import check
@@ -191,7 +192,8 @@ def parse_argument(context):
                                      add_help=False,
                                      epilog='''
                                             Json results will at: {}
-                                            '''.format(context.jsonfile))
+                                            Log will at: {}
+                                            '''.format(context.jsonfile, context.logfile))
 
     parser.add_argument('-e', '--env-check', dest='env_check', action='store_true',
                         help='Check environment')
@@ -235,6 +237,11 @@ def parse_argument(context):
 def run(context):
     context.tasks = []
     context.jsonfile = "/var/lib/{}/{}-out.json".format(context.name, context.name)
+    context.logfile = "/var/log/{}.log".format(context.name, context.name)
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+                        datefmt='%Y/%m/%d %H:%M:%S',
+                        filename=context.logfile,
+                        level=logging.DEBUG)
     parse_argument(context)
 
     try:
