@@ -146,36 +146,39 @@ def fence_node(context):
     if not fence_timeout:
         fence_timeout = config.FENCE_TIMEOUT
 
-    print("Testcase:         Fence node \"{}\"".format(node))
-    print("Expect Results:   {}".format(fence_action))
-    print("Fence Timeout:    {}".format(fence_timeout))
+    task = utils.TaskFence("Fence node {}".format(node),
+                           fence_action=fence_action,
+                           fence_timeout=fence_timeout)
+    task.print_header()
     if not utils.ask("Run?"):
+        task.info_append("Testcase cancelled")
         return
-    utils.msg_warn("Trying to fence node \"{}\"".format(node))
 
-    thread_check = threading.Thread(target=utils.anyone_kill, args=(node, fence_timeout))
+    task.info_append("Trying to fence node \"{}\"".format(node))
+
+    thread_check = threading.Thread(target=utils.anyone_kill, args=(node, task, fence_timeout))
     utils.run_cmd(config.FENCE_NODE.format(node), wait=False)
     if node == utils.me():
         # fence self
-        utils.msg_info("Waiting {}s for self {}...".format(fence_timeout, fence_action))
+        task.info_append("Waiting {}s for self {}...".format(fence_timeout, fence_action))
         thread_check.start()
 
         time.sleep(int(fence_timeout))
-        utils.msg_error("Am I Still live?:(")
+        task.error_append("Am I Still live?:(")
         sys.exit(1)
     else:
         # fence other node
-        utils.msg_info("Waiting {}s for node \"{}\" {}...".format(fence_timeout, node, fence_action))
+        task.info_append("Waiting {}s for node \"{}\" {}...".format(fence_timeout, node, fence_action))
         thread_check.start()
 
         count = 0
         while count < int(fence_timeout):
             if utils.check_node_status(node, 'lost'):
-                utils.msg_info("Node \"{}\" has been fenced successfully".format(node))
+                task.info_append("Node \"{}\" has been fenced successfully".format(node))
                 return
             time.sleep(1)
             count += 1
-        utils.msg_error("Node \"{}\" Still alive?:(".format(node))
+        task.error_append("Node \"{}\" Still alive?:(".format(node))
         sys.exit(1)
 
 

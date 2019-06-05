@@ -62,20 +62,15 @@ def json_dumps():
 
 class Task(object):
 
-    def __init__(self, description):
+    def __init__(self, description, flush=False):
         self.passed = True
         self.messages = []
         self.timestamp = now()
         self.description = description
         logging.info(description)
-
-    def msg_append(self, msg_type, msg):
-        if msg_type in ("warn", "error"):
-            self.passed = False
-        self.messages.append((msg_type, msg, now()))
-
-
-class TaskCheck(Task):
+        self.flush = flush
+        from . import main
+        self.prev_tasks = main.ctx.tasks
 
     def info_append(self, msg):
         self.msg_append("info", msg)
@@ -88,6 +83,25 @@ class TaskCheck(Task):
     def error_append(self, msg):
         self.msg_append("error", msg)
         logging.error(msg)
+
+    def msg_append(self, msg_type, msg):
+        if msg_type in ("warn", "error"):
+            self.passed = False
+        self.messages.append((msg_type, msg, now()))
+        if self.flush:
+            print(msg_str(msg_type, msg, now()))
+            self.to_json()
+
+    def build_base_result(self):
+        self.result = {
+            "Timestamp": self.timestamp,
+            "Description": self.description,
+            "Messages": ["{} {}:{}".format(m[2], m[0].upper(), m[1])
+                         for m in self.messages]
+        }
+
+
+class TaskCheck(Task):
 
     def to_stdout(self):
         print(msg_str("info", self.description, self.timestamp), end=' ')
@@ -100,17 +114,10 @@ class TaskCheck(Task):
             print(msg_str(msg[0], msg[1], prefix='  '))
 
     def to_json(self):
-        import json
-
-        result = {
-            "Timestamp": self.timestamp,
-            "Description": self.description,
-            "Result": self.passed,
-            "Messages": ["{} {}:{}".format(m[2], m[0].upper(), m[1])
-                         for m in self.messages]
-        }
+        self.build_base_result()
+        self.result['Result'] = self.passed
         from . import main
-        main.ctx.tasks.append(result)
+        main.ctx.tasks.append(self.result)
         json_dumps()
 
     def print_result(self):
@@ -121,11 +128,9 @@ class TaskCheck(Task):
 class TaskKill(Task):
 
     def  __init__(self, description, expected, looping):
-        super(self.__class__, self).__init__(description)
+        super(self.__class__, self).__init__(description, flush=True)
         self.expected = expected
         self.looping = looping
-        from . import main
-        self.prev_tasks = main.ctx.tasks
 
     def print_header(self):
         header = '''Testcase:          {}
@@ -136,37 +141,37 @@ Expected State:    {}
         print(header)
         self.to_json()
 
-    def info_append(self, msg):
-        self.msg_append("info", msg)
-        logging.info(msg)
-        msg_info(msg)
-        self.to_json()
+    def to_json(self):
+        self.build_base_result()
+        self.result['Looping Kill'] = self.looping
+        self.result['Expected State'] = self.expected
+        from . import main
+        main.ctx.tasks = self.prev_tasks + [self.result]
+        json_dumps()
 
-    def warn_append(self, msg):
-        self.msg_append("warn", msg)
-        logging.warning(msg)
-        msg_warn(msg)
-        self.to_json()
 
-    def error_append(self, msg):
-        self.msg_append("error", msg)
-        logging.error(msg)
-        msg_error(msg)
+class TaskFence(Task):
+
+    def  __init__(self, description, fence_action, fence_timeout):
+        super(self.__class__, self).__init__(description, flush=True)
+        self.fence_action = fence_action
+        self.fence_timeout = fence_timeout
+
+    def print_header(self):
+        header = '''Testcase:          {}
+Fence action:      {}
+Fence timeout:     {}
+'''.format(self.description, self.fence_action, self.fence_timeout)
+        print("==============================================")
+        print(header)
         self.to_json()
 
     def to_json(self):
-        import json
-
-        result = {
-            "Timestamp": self.timestamp,
-            "Description": self.description,
-            "Looping Kill": self.looping,
-            "Expected State": self.expected,
-            "Messages": ["{} {}:{}".format(m[2], m[0].upper(), m[1])
-                         for m in self.messages]
-        }
+        self.build_base_result()
+        self.result['Fence action'] = self.fence_action
+        self.result['Fence timeout'] = self.fence_timeout
         from . import main
-        main.ctx.tasks = self.prev_tasks + [result]
+        main.ctx.tasks = self.prev_tasks + [self.result]
         json_dumps()
 
 
