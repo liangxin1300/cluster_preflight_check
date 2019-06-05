@@ -382,7 +382,7 @@ def this_node():
     return os.uname()[1]
 
 
-def anyone_kill(node, task, timeout=10):
+def anyone_kill(node, task, timeout=100):
     count = 0
     while count < int(timeout):
         rc, out, _ = run_cmd("crm_mon -1|grep \"^Online:.* {} \"".format(node))
@@ -397,5 +397,5 @@ def anyone_kill(node, task, timeout=10):
                 task.info_append("Node \"{}\" will be fenced by \"{}\"!".format(match.group(1), match.group(2)))
                 break
 
-        time.sleep(1)
+        time.sleep(0.1)
         count += 1
