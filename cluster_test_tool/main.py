@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import sys
 import re
 import argparse
@@ -109,12 +110,14 @@ def kill_testcase(context):
             context.note = note
 
             task = utils.TaskKill("Force kill {}".format(context.current_kill),
+                                  name=context.current_kill,
                                   expected=context.expected,
                                   looping=context.loop)
-            task.print_header()
+            print(task.header())
             if not utils.ask("Run?"):
                 task.info_append("Testcase cancelled")
                 return
+            task.enable_report()
 
             kill(context, task)
 
@@ -149,7 +152,7 @@ def fence_node(context):
     task = utils.TaskFence("Fence node {}".format(node),
                            fence_action=fence_action,
                            fence_timeout=fence_timeout)
-    task.print_header()
+    print(task.header())
     if not utils.ask("Run?"):
         task.info_append("Testcase cancelled")
         return
@@ -196,9 +199,11 @@ def parse_argument(context):
                                      add_help=False,
                                      formatter_class=RawTextHelpFormatter,
                                      epilog='''
-Json results will at: {}
-Log will at: {}
-Report will at: {}'''.format(context.jsonfile, context.logfile, context.reportfile))
+Log: {}
+Json results: {}
+For each --kill-* testcase, report directory: {}'''.format(context.logfile,
+                                                           context.jsonfile,
+                                                           context.report_path))
 
     parser.add_argument('-e', '--env-check', dest='env_check', action='store_true',
                         help='Check environment')
@@ -241,8 +246,11 @@ Report will at: {}'''.format(context.jsonfile, context.logfile, context.reportfi
 
 def run(context):
     context.tasks = []
-    context.reportfile = "/var/lib/{}/{}.report".format(context.name, context.name)
-    context.jsonfile = "/var/lib/{}/{}.json".format(context.name, context.name)
+    var_dir = "/var/lib/{}".format(context.name)
+    if not os.path.exists(var_dir):
+        os.mkdir(var_dir)
+    context.report_path = var_dir
+    context.jsonfile = "{}/{}.json".format(var_dir, context.name)
     context.logfile = "/var/log/{}.log".format(context.name, context.name)
     logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s',
                         datefmt='%Y/%m/%d %H:%M:%S',

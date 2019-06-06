@@ -18,8 +18,8 @@ def me():
     return socket.gethostname()
 
 
-def now():
-    return datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+def now(form="%Y/%m/%d %H:%M:%S"):
+    return datetime.now().strftime(form)
 
 
 def msg_str(msg_type, msg, timestamp=None, prefix=''):
@@ -91,6 +91,7 @@ class Task(object):
         if self.flush:
             print(msg_str(msg_type, msg, now()))
             self.to_json()
+            self.to_report()
 
     def build_base_result(self):
         self.result = {
@@ -124,22 +125,47 @@ class TaskCheck(Task):
         self.to_stdout()
         self.to_json()
 
+    def to_report(self):
+        pass
+
 
 class TaskKill(Task):
 
-    def  __init__(self, description, expected, looping):
+    def  __init__(self, description, name, expected, looping):
         super(self.__class__, self).__init__(description, flush=True)
+        self.name = name
         self.expected = expected
         self.looping = looping
+        self.report = False
 
-    def print_header(self):
-        header = '''Testcase:          {}
+    def enable_report(self):
+        self.report = True
+        from . import main
+        if not os.path.isdir(main.ctx.report_path):
+            msg_error("{} is not a directory".format(main.ctx.report_path))
+
+        report_path = main.ctx.report_path
+        report_name = "{}-{}.report".format(main.ctx.name, now("%Y%m%d_%H-%M-%S"))
+        self.report_file = os.path.join(report_path, report_name)
+        print("(Report: {})".format(self.report_file))
+
+        if self.looping:
+            content_key = "{}-l".format(self.name)
+        else:
+            content_key = self.name
+
+        from . import explain
+        _, nodes, _ = run_cmd("crm_node -l|awk '{print $2}'")
+        n_list = [n for n in nodes.split('\n') if n != me()]
+        self.explain = explain.contents[content_key].format(nodeA=me(), nodeB=n_list[0])
+
+    def header(self):
+        h = '''==============================================
+Testcase:          {}
 Looping Kill:      {}
 Expected State:    {}
 '''.format(self.description, self.looping, self.expected)
-        print("==============================================")
-        print(header)
-        self.to_json()
+        return h
 
     def to_json(self):
         self.build_base_result()
@@ -149,6 +175,17 @@ Expected State:    {}
         main.ctx.tasks = self.prev_tasks + [self.result]
         json_dumps()
 
+    def to_report(self):
+        if not self.report:
+            return
+        with open(self.report_file, 'w') as f:
+            f.write(self.header())
+            f.write("\nLog:\n")
+            for m in self.messages:
+                f.write("{} {}:{}\n".format(m[2], m[0].upper(), m[1]))
+            f.write("\nTestcase Explained:\n")
+            f.write("{}\n".format(self.explain))
+
 
 class TaskFence(Task):
 
@@ -157,14 +194,13 @@ class TaskFence(Task):
         self.fence_action = fence_action
         self.fence_timeout = fence_timeout
 
-    def print_header(self):
-        header = '''Testcase:          {}
+    def header(self):
+        h = '''==============================================
+Testcase:          {}
 Fence action:      {}
 Fence timeout:     {}
 '''.format(self.description, self.fence_action, self.fence_timeout)
-        print("==============================================")
-        print(header)
-        self.to_json()
+        return h
 
     def to_json(self):
         self.build_base_result()
@@ -173,6 +209,9 @@ Fence timeout:     {}
         from . import main
         main.ctx.tasks = self.prev_tasks + [self.result]
         json_dumps()
+
+    def to_report(self):
+        pass
 
 
 def to_ascii(s):
