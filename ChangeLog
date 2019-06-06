@@ -1,3 +1,9 @@
+* Thu Jun 6 2019 Xin Liang <XLiang@suse.com>
+- version 0.0.23
+- Add log to record internal operations
+- Add json output for each test case
+- Add report for killing test case
+
 * Mon May 27 2019 Xin Liang <XLiang@suse.com>
 - Version 0.0.20
 - Python3 only
