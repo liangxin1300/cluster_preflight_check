@@ -444,4 +444,12 @@ def package_is_installed(pkg):
     """
     Check if package is installed
     """
-    return run_cmd("rpm -q --quiet {}".format(pkg))[0]
+    return run_cmd("rpm -q --quiet {}".format(pkg))[0] == 0
+
+
+def corosync_port():
+    ports = []
+    rc, out, _ = run_cmd("corosync-cmapctl |awk -F'= ' '/mcastport/{print $2}'")
+    if rc == 0:
+        ports = out.split('\n')
+    return ports

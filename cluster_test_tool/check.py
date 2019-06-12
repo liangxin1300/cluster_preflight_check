@@ -72,15 +72,40 @@ def check_watchdog():
     task.print_result()
 
 
+def check_port_open(task, item):
+    ports = utils.corosync_port()
+    if not ports:
+        task.error("Can not get corosync's port")
+        return
+
+    if item == "firewalld":
+        rc, out, err = utils.run_cmd('firewall-cmd --list-port')
+        if rc != 0:
+            task.error(err)
+        for p in ports:
+            if re.search(' {}/udp'.format(p), out):
+                task.info("UDP port {} is opened in firewalld".format(p))
+            else:
+                task.error("UDP port {} should open in firewalld".format(p))
+
+
 def check_firewall():
-    pass
-    """
     task = utils.TaskCheck("Checking firewall")
 
-    if utils.package_is_installed("firewalld"):
-        if utils.service_is_active("firewalld"):
-            task.info
-    """
+    for item in ("firewalld", "SuSEfirewall2"):
+        if utils.package_is_installed(item):
+            task.info("{}.service is available".format(item))
+            if utils.service_is_active(item):
+                task.info("{}.service is active".format(item))
+                check_port_open(task, item)
+            else:
+                task.warn("{}.service is not active".format(item))
+            break
+    else:
+       task.error("Failed to detect firewall")
+
+    task.print_result()
+
 
 def check_cluster():
     print("\n============ Checking cluster state ============")
