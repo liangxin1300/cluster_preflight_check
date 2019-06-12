@@ -61,22 +61,22 @@ def kill_testcase(context):
         while count < 10:
             rc, pid = utils.get_process_status(context.current_kill)
             if rc:
-                task.info_append("Process {}({}) is restarted!".format(context.current_kill, pid))
+                task.info("Process {}({}) is restarted!".format(context.current_kill, pid))
                 return
             time.sleep(0.5)
             count += 1
-        task.error_append("Process {} is not restarted!".format(context.current_kill))
+        task.error("Process {} is not restarted!".format(context.current_kill))
 
     def kill(context, task):
         if "Fenced" in context.expected and not utils.fence_enabled():
-            task.error_append("stonith is not enabled!")
+            task.error("stonith is not enabled!")
             sys.exit(1)
 
         while True:
             if not is_process_running(context, task):
                 continue
 
-            task.info_append("Trying to run \"{}\"".format(context.cmd))
+            task.info("Trying to run \"{}\"".format(context.cmd))
             utils.run_cmd(context.cmd)
 
             if not context.loop:
@@ -115,7 +115,7 @@ def kill_testcase(context):
                                   looping=context.loop)
             print(task.header())
             if not utils.ask("Run?"):
-                task.info_append("Testcase cancelled")
+                task.info("Testcase cancelled")
                 return
             task.enable_report()
 
@@ -154,34 +154,34 @@ def fence_node(context):
                            fence_timeout=fence_timeout)
     print(task.header())
     if not utils.ask("Run?"):
-        task.info_append("Testcase cancelled")
+        task.info("Testcase cancelled")
         return
 
-    task.info_append("Trying to fence node \"{}\"".format(node))
+    task.info("Trying to fence node \"{}\"".format(node))
 
     thread_check = threading.Thread(target=utils.anyone_kill, args=(node, task, fence_timeout))
     utils.run_cmd(config.FENCE_NODE.format(node), wait=False)
     if node == utils.me():
         # fence self
-        task.info_append("Waiting {}s for self {}...".format(fence_timeout, fence_action))
+        task.info("Waiting {}s for self {}...".format(fence_timeout, fence_action))
         thread_check.start()
 
         time.sleep(int(fence_timeout))
-        task.error_append("Am I Still live?:(")
+        task.error("Am I Still live?:(")
         sys.exit(1)
     else:
         # fence other node
-        task.info_append("Waiting {}s for node \"{}\" {}...".format(fence_timeout, node, fence_action))
+        task.info("Waiting {}s for node \"{}\" {}...".format(fence_timeout, node, fence_action))
         thread_check.start()
 
         count = 0
         while count < int(fence_timeout):
             if utils.check_node_status(node, 'lost'):
-                task.info_append("Node \"{}\" has been fenced successfully".format(node))
+                task.info("Node \"{}\" has been fenced successfully".format(node))
                 return
             time.sleep(1)
             count += 1
-        task.error_append("Node \"{}\" Still alive?:(".format(node))
+        task.error("Node \"{}\" Still alive?:(".format(node))
         sys.exit(1)
 
 
@@ -189,7 +189,7 @@ def is_process_running(context, task):
     rc, pid = utils.get_process_status(context.current_kill)
     if not rc:
         return False
-    task.info_append("Process {}({}) is running...".format(context.current_kill, pid))
+    task.info("Process {}({}) is running...".format(context.current_kill, pid))
     return True
 
 

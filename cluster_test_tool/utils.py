@@ -72,15 +72,15 @@ class Task(object):
         from . import main
         self.prev_tasks = main.ctx.tasks
 
-    def info_append(self, msg):
+    def info(self, msg):
         self.msg_append("info", msg)
         logging.info(msg)
 
-    def warn_append(self, msg):
+    def warn(self, msg):
         self.msg_append("warn", msg)
         logging.warning(msg)
 
-    def error_append(self, msg):
+    def error(self, msg):
         self.msg_append("error", msg)
         logging.error(msg)
 
