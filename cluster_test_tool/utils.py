@@ -101,6 +101,9 @@ class Task(object):
                          for m in self.messages]
         }
 
+    def print_header(self):
+        print(self.header())
+
 
 class TaskCheck(Task):
 
@@ -200,6 +203,34 @@ Testcase:          {}
 Fence action:      {}
 Fence timeout:     {}
 '''.format(self.description, self.fence_action, self.fence_timeout)
+        return h
+
+    def to_json(self):
+        self.build_base_result()
+        self.result['Fence action'] = self.fence_action
+        self.result['Fence timeout'] = self.fence_timeout
+        from . import main
+        main.ctx.tasks = self.prev_tasks + [self.result]
+        json_dumps()
+
+    def to_report(self):
+        pass
+
+
+class TaskSplitBrain(Task):
+
+    def  __init__(self, description, fence_action, fence_timeout):
+        super(self.__class__, self).__init__(description, flush=True)
+        self.fence_action = fence_action
+        self.fence_timeout = fence_timeout
+
+    def header(self):
+        h = '''==============================================
+Testcase:          {}
+Expected Result:   This node({}) get fenced
+Fence action:      {}
+Fence timeout:     {}
+'''.format(self.description, me(), self.fence_action, self.fence_timeout)
         return h
 
     def to_json(self):
@@ -449,7 +480,7 @@ def package_is_installed(pkg):
 
 def corosync_port():
     ports = []
-    rc, out, _ = run_cmd("corosync-cmapctl |awk -F'= ' '/mcastport/{print $2}'")
+    rc, out, _ = run_cmd("corosync-cmapctl |awk -F'= ' 'BEGIN {rc=1}/mcastport/{print $2; rc=0}END{exit rc}'")
     if rc == 0:
         ports = out.split('\n')
     return ports

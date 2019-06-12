@@ -113,13 +113,49 @@ def kill_testcase(context):
                                   name=context.current_kill,
                                   expected=context.expected,
                                   looping=context.loop)
-            print(task.header())
+            task.print_header()
             if not utils.ask("Run?"):
                 task.info("Testcase cancelled")
                 return
             task.enable_report()
 
             kill(context, task)
+
+
+def split_brain(context):
+    if not context.sp_iptables:
+        return
+
+    fence_enabled, fence_action, fence_timeout = utils.get_fence_info()
+    # check whether stonith is enabled
+    if not fence_enabled:
+        utils.msg_error("stonith is not enabled!")
+        sys.exit(1)
+    # get stonith action
+    if not fence_action:
+        sys.exit(1)
+
+    if not fence_timeout:
+        fence_timeout = config.FENCE_TIMEOUT
+    task = utils.TaskSplitBrain("Block corosync ports",
+                                fence_action=fence_action,
+                                fence_timeout=fence_timeout)
+    task.print_header()
+    if not utils.ask("Run?"):
+        task.info("Testcase cancelled")
+        return
+
+    ports = utils.corosync_port()
+    if not ports:
+        task.error("Can not get corosync's port")
+        return
+    task.info("Trying to temporarily block ports {}".format(ports))
+    for p in ports:
+        utils.run_cmd(config.BLOCK_PORT.format(p))
+    task.info("Waiting {}s for self {}...".format(fence_timeout, fence_action))
+    time.sleep(int(fence_timeout))
+    task.error("Am I Still live?:(")
+    sys.exit(1)
 
 
 def fence_node(context):
@@ -152,7 +188,7 @@ def fence_node(context):
     task = utils.TaskFence("Fence node {}".format(node),
                            fence_action=fence_action,
                            fence_timeout=fence_timeout)
-    print(task.header())
+    task.print_header()
     if not utils.ask("Run?"):
         task.info("Testcase cancelled")
         return
@@ -193,11 +229,16 @@ def is_process_running(context, task):
     return True
 
 
+class MyFormatter(RawTextHelpFormatter):
+    def __init__(self,prog):
+        super(MyFormatter,self).__init__(prog, max_help_position=50)
+
+
 def parse_argument(context):
     parser = argparse.ArgumentParser(description='Cluster Testing Tool Set',
                                      allow_abbrev=False,
                                      add_help=False,
-                                     formatter_class=RawTextHelpFormatter,
+                                     formatter_class=MyFormatter,
                                      epilog='''
 Log: {}
 Json results: {}
@@ -219,6 +260,8 @@ For each --kill-* testcase, report directory: {}'''.format(context.logfile,
                               help='Kill pacemakerd daemon')
     group_mutual.add_argument('--fence-node', dest='fence_node', metavar='NODE',
                               help='Fence specific node')
+    group_mutual.add_argument('--split-brain-iptables', dest='sp_iptables', action='store_true',
+                              help='Make split brain by blocking corosync ports')
     parser.add_argument('-l', '--kill-loop', dest='loop', action='store_true',
                         help='Kill process in loop')
 
@@ -263,6 +306,7 @@ def run(context):
         print()
         kill_testcase(context)
         fence_node(context)
+        split_brain(context)
 
     except KeyboardInterrupt:
         utils.json_dumps()
