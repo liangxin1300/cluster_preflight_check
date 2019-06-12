@@ -438,3 +438,10 @@ def anyone_kill(node, task, timeout=100):
 
         time.sleep(0.1)
         count += 1
+
+
+def package_is_installed(pkg):
+    """
+    Check if package is installed
+    """
+    return run_cmd("rpm -q --quiet {}".format(pkg))[0]

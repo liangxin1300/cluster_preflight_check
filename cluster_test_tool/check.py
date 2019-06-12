@@ -15,7 +15,7 @@ def check_environment():
     check_my_hostname_resolves()
     check_time_service()
     check_watchdog()
-    #check_firewall()
+    check_firewall()
 
 
 def check_my_hostname_resolves():
@@ -71,6 +71,16 @@ def check_watchdog():
         task.warn_append("Watchdog device must be configured if want to use SBD!")
     task.print_result()
 
+
+def check_firewall():
+    pass
+    """
+    task = utils.TaskCheck("Checking firewall")
+
+    if utils.package_is_installed("firewalld"):
+        if utils.service_is_active("firewalld"):
+            task.info_append
+    """
 
 def check_cluster():
     print("\n============ Checking cluster state ============")
