@@ -107,6 +107,10 @@ class Task(object):
 
 class TaskCheck(Task):
 
+    def __init__(self, description, quiet=False):
+        super(self.__class__, self).__init__(description)
+        self.quiet = quiet
+
     def to_stdout(self):
         print(msg_str("info", self.description, self.timestamp), end=' ')
         if self.passed:
@@ -125,6 +129,8 @@ class TaskCheck(Task):
         json_dumps()
 
     def print_result(self):
+        if self.quiet:
+            return
         self.to_stdout()
         self.to_json()
 

@@ -116,8 +116,8 @@ def check_cluster():
     check_resources()
 
 
-def check_cluster_service():
-    task = utils.TaskCheck("Checking cluster service")
+def check_cluster_service(quiet=False):
+    task = utils.TaskCheck("Checking cluster service", quiet=quiet)
     for s in ("corosync", "pacemaker"):
         if utils.service_is_enabled(s):
             task.info("{} is enabled".format(s))

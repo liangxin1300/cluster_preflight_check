@@ -113,6 +113,11 @@ def kill_testcase(context):
                                   name=context.current_kill,
                                   expected=context.expected,
                                   looping=context.loop)
+
+            if not check.check_cluster_service(quiet=True):
+                task.error("cluster not running!")
+                return
+
             task.print_header()
             if not utils.ask("Run?"):
                 task.info("Testcase cancelled")
@@ -124,6 +129,10 @@ def kill_testcase(context):
 
 def split_brain(context):
     if not context.sp_iptables:
+        return
+
+    if not check.check_cluster_service(quiet=True):
+        utils.msg_error("cluster not running!")
         return
 
     fence_enabled, fence_action, fence_timeout = utils.get_fence_info()
