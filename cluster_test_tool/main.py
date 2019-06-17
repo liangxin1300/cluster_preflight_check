@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+from __future__ import print_function
 import os
 import sys
 import re
@@ -19,7 +19,7 @@ from . import utils
 
 class Context(object):
     def __setattr__(self, name, value):
-        super().__setattr__(name, value)
+        super(Context, self).__setattr__(name, value)
 
 
 def login(func):
@@ -246,7 +246,6 @@ class MyFormatter(RawTextHelpFormatter):
 def parse_argument(context):
     parser = argparse.ArgumentParser(prog=context.name,
                                      description='Cluster Testing Tool Set',
-                                     allow_abbrev=False,
                                      add_help=False,
                                      formatter_class=MyFormatter,
                                      epilog='''
@@ -298,6 +297,7 @@ For each --kill-* testcase, report directory: {}'''.format(context.logfile,
 
 
 def run(context):
+    context.py2 = sys.version_info[0] == 2
     context.tasks = []
     var_dir = "/var/lib/{}".format(context.name)
     if not os.path.exists(var_dir):

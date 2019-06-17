@@ -1,4 +1,4 @@
-
+from __future__ import print_function
 import re
 from . import utils
 
@@ -118,12 +118,13 @@ def check_cluster():
 
 def check_cluster_service(quiet=False):
     task = utils.TaskCheck("Checking cluster service", quiet=quiet)
-    for s in ("corosync", "pacemaker"):
+    for s in ("pacemaker", ):
         if utils.service_is_enabled(s):
             task.info("{} is enabled".format(s))
         else:
             task.warn("{} is disabled".format(s))
 
+    for s in ("corosync", "pacemaker"):
         if utils.service_is_active(s):
             task.info("{} service is running".format(s))
         else:

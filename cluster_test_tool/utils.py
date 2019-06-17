@@ -1,3 +1,4 @@
+from __future__ import print_function
 import subprocess
 import os
 import re
@@ -274,7 +275,10 @@ def ask(msg):
 
     while True:
         try:
-            ans = input(msg)
+            if main.ctx.py2:
+                ans = raw_input(msg)
+            else:
+                ans = input(msg)
         except EOFError:
             ans = 'n'
         if ans:
