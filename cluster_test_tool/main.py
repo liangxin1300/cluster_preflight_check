@@ -117,6 +117,8 @@ def kill_testcase(context):
             if not check.check_cluster_service(quiet=True):
                 task.error("cluster not running!")
                 return
+            if not is_process_running(context, task):
+                return
 
             task.print_header()
             if not utils.ask("Run?"):
