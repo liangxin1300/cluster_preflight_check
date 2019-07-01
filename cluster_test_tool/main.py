@@ -133,6 +133,9 @@ def split_brain(context):
     if not context.sp_iptables:
         return
 
+    if not utils.which("iptables"):
+        return
+
     if not check.check_cluster_service(quiet=True):
         utils.msg_error("cluster not running!")
         return
