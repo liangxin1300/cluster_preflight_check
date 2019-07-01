@@ -49,6 +49,7 @@ def login(func):
 
 def kill_testcase(context):
     '''
+    Testcase: kill cluster related processes
     --kill-sbd:           restarted or fenced
     --kill-sbd -l         fenced
     --kill-corosync       restarted or fenced
@@ -130,6 +131,9 @@ def kill_testcase(context):
 
 
 def split_brain(context):
+    '''
+    Testcase: make split brain by blocking corosync ports
+    '''
     if not context.sp_iptables:
         return
 
@@ -173,6 +177,9 @@ def split_brain(context):
 
 
 def fence_node(context):
+    '''
+    Testcase: fence specific node
+    '''
     if not context.fence_node:
         return
 

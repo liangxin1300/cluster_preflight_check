@@ -4,6 +4,9 @@ from . import utils
 
 
 def check(context):
+    '''
+    Check environment and cluster state if related options enabled
+    '''
     if context.env_check:
         check_environment()
     if context.cluster_check:
@@ -11,6 +14,9 @@ def check(context):
 
 
 def check_environment():
+    '''
+    A set of functions to check environment
+    '''
     print("\n============ Checking environment ============")
     check_my_hostname_resolves()
     check_time_service()
@@ -19,6 +25,9 @@ def check_environment():
 
 
 def check_my_hostname_resolves():
+    '''
+    Check hostname resolvable
+    '''
     task = utils.TaskCheck("Checking hostname resolvable")
 
     hostname = utils.this_node()
@@ -33,6 +42,9 @@ def check_my_hostname_resolves():
 
 
 def check_time_service():
+    '''
+    Check time service
+    '''
     task = utils.TaskCheck("Checking time service")
 
     timekeepers = ('chronyd.service', 'ntp.service', 'ntpd.service')
@@ -60,9 +72,9 @@ def check_time_service():
 
 
 def check_watchdog():
-    """
+    '''
     Verify watchdog device. Fall back to /dev/watchdog.
-    """
+    '''
     task = utils.TaskCheck("Checking watchdog")
 
     watchdog_dev = utils.detect_watchdog_device()
@@ -73,6 +85,9 @@ def check_watchdog():
 
 
 def check_port_open(task, item):
+    '''
+    Check whether corosync port is blocked by iptables
+    '''
     ports = utils.corosync_port()
     if not ports:
         task.error("Can not get corosync's port")
@@ -87,9 +102,15 @@ def check_port_open(task, item):
                 task.info("UDP port {} is opened in firewalld".format(p))
             else:
                 task.error("UDP port {} should open in firewalld".format(p))
+    if item == "SuSEfirewall2":
+        #TODO
+        pass
 
 
 def check_firewall():
+    '''
+    Check firewall
+    '''
     task = utils.TaskCheck("Checking firewall")
 
     for item in ("firewalld", "SuSEfirewall2"):
@@ -108,6 +129,9 @@ def check_firewall():
 
 
 def check_cluster():
+    '''
+    A set of functions to check cluster state
+    '''
     print("\n============ Checking cluster state ============")
     if not check_cluster_service():
         return
@@ -117,6 +141,9 @@ def check_cluster():
 
 
 def check_cluster_service(quiet=False):
+    '''
+    Check service status of pacemaker/corosync
+    '''
     task = utils.TaskCheck("Checking cluster service", quiet=quiet)
     for s in ("pacemaker", ):
         if utils.service_is_enabled(s):
@@ -134,6 +161,11 @@ def check_cluster_service(quiet=False):
 
 
 def check_fencing():
+    '''
+    Check STONITH/Fence:
+      Whether stonith is enabled
+      Whether stonith resource is configured and running
+    '''
     task = utils.TaskCheck("Checking STONITH/Fence")
 
     if utils.fence_enabled():
@@ -170,6 +202,12 @@ def check_fencing():
 
 
 def check_nodes():
+    '''
+    Check nodes info:
+      Current DC
+      Quorum status
+      Online/OFFLINE/UNCLEAN nodes
+    '''
     task = utils.TaskCheck("Checking nodes")
 
     cmd_awk = """awk '$1=="Current"||$1=="Online:"||$1=="OFFLINE:"||$3=="UNCLEAN"{print $0}'"""
@@ -207,6 +245,9 @@ def check_nodes():
 
 
 def check_resources():
+    '''
+    Check number of Started/Stopped/FAILED resources
+    '''
     task = utils.TaskCheck("Checking resources")
 
     awk_stop = """awk '$3=="Stopped"||$0~/FAILED/{print $0}' | wc -l"""

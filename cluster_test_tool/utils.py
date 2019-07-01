@@ -64,6 +64,10 @@ def json_dumps():
 
 
 class Task(object):
+    '''
+    Task is a base class
+    Use for record the information of each test case
+    '''
 
     def __init__(self, description, flush=False):
         self.passed = True
@@ -422,17 +426,17 @@ def do_fence_happen(node, run_time):
 
 
 def service_is_active(service):
-    """
+    '''
     Check if service is active
-    """
+    '''
     rc, _, _ = run_cmd('systemctl -q is-active {}'.format(service))
     return rc == 0
 
 
 def service_is_enabled(service):
-    """
+    '''
     Check if service is enabled
-    """
+    '''
     rc, _, _ = run_cmd('systemctl is-enabled {}'.format(service))
     return rc == 0
 
@@ -460,11 +464,16 @@ def which(prog):
 
 
 def this_node():
-    'returns name of this node (hostname)'
+    '''
+    returns name of this node (hostname)
+    '''
     return os.uname()[1]
 
 
 def anyone_kill(node, task, timeout=50):
+    '''
+    Try to grab who will kill me
+    '''
     count = 0
     while count < int(timeout):
         rc, out, _ = run_cmd("crm_mon -1|grep \"^Online:.* {} \"".format(node))
@@ -483,13 +492,16 @@ def anyone_kill(node, task, timeout=50):
 
 
 def package_is_installed(pkg):
-    """
+    '''
     Check if package is installed
-    """
+    '''
     return run_cmd("rpm -q --quiet {}".format(pkg))[0] == 0
 
 
 def corosync_port():
+    '''
+    Get corosync ports using corosync-cmapctl
+    '''
     ports = []
     rc, out, _ = run_cmd("corosync-cmapctl |awk -F'= ' 'BEGIN {rc=1}/mcastport/{print $2; rc=0}END{exit rc}'")
     if rc == 0:
