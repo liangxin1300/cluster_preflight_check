@@ -462,19 +462,18 @@ def this_node():
     return os.uname()[1]
 
 
-def anyone_kill(node, task, timeout=100):
+def anyone_kill(node, task, timeout=50):
     count = 0
     while count < int(timeout):
         rc, out, _ = run_cmd("crm_mon -1|grep \"^Online:.* {} \"".format(node))
         if rc == 0:
             msg_debug("Node \"{}\" is online".format(node))
-            break
 
         rc, out, _ = run_cmd("crm_mon -1|grep -A1 \"Fencing Actions:\"")
         if rc == 0:
             match = re.search(r"of (.*) pending: .*origin=(.*)$", out)
             if match.group(1) == node:
-                task.info_append("Node \"{}\" will be fenced by \"{}\"!".format(match.group(1), match.group(2)))
+                task.info("Node \"{}\" will be fenced by \"{}\"!".format(match.group(1), match.group(2)))
                 break
 
         time.sleep(0.1)
