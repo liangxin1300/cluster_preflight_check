@@ -59,6 +59,8 @@ def json_dumps():
     from . import main
     with open(main.ctx.jsonfile, 'w') as f:
         f.write(json.dumps(main.ctx.tasks, indent=2))
+        f.flush()
+        os.fsync(f)
 
 
 class Task(object):
@@ -165,9 +167,7 @@ class TaskKill(Task):
             content_key = self.name
 
         from . import explain
-        _, nodes, _ = run_cmd("crm_node -l|awk '{print $2}'")
-        n_list = [n for n in nodes.split('\n') if n != me()]
-        self.explain = explain.contents[content_key].format(nodeA=me(), nodeB=n_list[0])
+        self.explain = explain.contents[content_key].format(nodeA=me(), nodeB="other node")
 
     def header(self):
         h = '''==============================================
@@ -195,6 +195,8 @@ Expected State:    {}
                 f.write("{} {}:{}\n".format(m[2], m[0].upper(), m[1]))
             f.write("\nTestcase Explained:\n")
             f.write("{}\n".format(self.explain))
+            f.flush()
+            os.fsync(f)
 
 
 class TaskFence(Task):
@@ -252,17 +254,17 @@ Fence timeout:     {}
         pass
 
 
-def to_ascii(s):
+def to_ascii(input_str):
     """Convert the bytes string to a ASCII string
     Usefull to remove accent (diacritics)"""
-    if s is None:
-        return s
-    if isinstance(s, str):
-        return s
+    if input_str is None:
+        return input_str
+    if isinstance(input_str, str):
+        return input_str
     try:
-        return str(s, 'utf-8')
+        return str(input_str, 'utf-8')
     except UnicodeDecodeError:
-        return s
+        return input_str.decode('utf-8', errors='ignore')
 
 
 def ask(msg):
