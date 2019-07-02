@@ -287,8 +287,10 @@ For each --kill-* testcase, report directory: {}'''.format(context.logfile,
                         help='Kill process in loop')
 
     other_options = parser.add_argument_group('other options')
+    '''
     other_options.add_argument('-d', '--debug', dest='debug', action='store_true',
                                help='Print verbose debugging information')
+    '''
     other_options.add_argument('-y', '--yes', dest='yes', action='store_true',
                                help='Answer "yes" if asked to run the test')
     '''
@@ -308,7 +310,28 @@ For each --kill-* testcase, report directory: {}'''.format(context.logfile,
         setattr(context, arg, getattr(args, arg))
 
 
+def setup_logging(context):
+    logging.basicConfig(level=logging.DEBUG)
+    context.logger = logging.getLogger(context.name)
+    context.logger.propagate = False
+
+    stdout_handler = logging.StreamHandler()
+    stdout_handler.setFormatter(utils.MyFormatter())
+    context.logger_stdout_handler = stdout_handler
+    context.logger.addHandler(context.logger_stdout_handler)
+
+    context.logfile = "/var/log/{}.log".format(context.name)
+    file_handler = logging.FileHandler(context.logfile)
+    file_format = logging.Formatter('%(asctime)s %(name)s %(levelname)s: %(message)s',
+                                    datefmt='%Y/%m/%d %H:%M:%S')
+    file_handler.setFormatter(file_format)
+    context.logger_file_handler = file_handler
+    context.logger.addHandler(context.logger_file_handler)
+
+
 def run(context):
+    setup_logging(context)
+
     context.py2 = sys.version_info[0] == 2
     context.tasks = []
     var_dir = "/var/lib/{}".format(context.name)
@@ -316,11 +339,7 @@ def run(context):
         os.mkdir(var_dir)
     context.report_path = var_dir
     context.jsonfile = "{}/{}.json".format(var_dir, context.name)
-    context.logfile = "/var/log/{}.log".format(context.name, context.name)
-    logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s: %(message)s',
-                        datefmt='%Y/%m/%d %H:%M:%S',
-                        filename=context.logfile,
-                        level=logging.DEBUG)
+
     parse_argument(context)
 
     try:

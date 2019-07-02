@@ -14,6 +14,38 @@ CYELLOW = '\033[33m'
 CGREEN = '\033[32m'
 CEND = '\033[0m'
 
+LEVEL = {
+    "info": logging.INFO,
+    "warn": logging.WARNING,
+    "error": logging.ERROR
+}
+
+
+class MyFormatter(logging.Formatter):
+
+    FORMAT_ONE = "[%(asctime)s]%(levelname)s: %(message)s"
+    FORMAT_TWO = "%(timestamp)s%(levelname)s: %(message)s"
+
+    COLORS = {
+        'WARNING': CYELLOW,
+        'INFO': CGREEN,
+        'ERROR': CRED
+    }
+
+    def __init__(self, flush=True):
+        if flush:
+            fmt = self.FORMAT_ONE
+        else:
+            fmt = self.FORMAT_TWO
+        logging.Formatter.__init__(self, fmt=fmt, datefmt='%Y/%m/%d %H:%M:%S')
+
+    def format(self, record):
+        levelname = record.levelname
+        if levelname in self.COLORS:
+            levelname_color = self.COLORS[levelname] + levelname + CEND
+            record.levelname = levelname_color
+        return logging.Formatter.format(self, record)
+
 
 def me():
     return socket.gethostname()
@@ -23,36 +55,26 @@ def now(form="%Y/%m/%d %H:%M:%S"):
     return datetime.now().strftime(form)
 
 
-def msg_str(msg_type, msg, timestamp=None, prefix=''):
-    if msg_type not in ("info", "warn", "error", "debug"):
-        raise TypeError("msg_type must be info|warn|error|debug")
-
-    color = CGREEN
-    if msg_type == "warn":
-        color = CYELLOW
-    if msg_type == "error":
-        color = CRED
-    if timestamp:
-        prefix += "[{}]".format(timestamp)
-    return "{}{}{}:{} {}".format(prefix, color, msg_type.upper(), CEND, msg)
- 
-
-def msg_info(msg):
-    print(msg_str("info", msg, timestamp=now()))
-
-
-def msg_warn(msg):
-    print(msg_str("warn", msg, timestamp=now()))
-
-
-def msg_error(msg):
-    print(msg_str("error", msg, timestamp=now()))
-
-
-def msg_debug(msg):
+def msg_raw(level, msg, to_stdout=True):
     from . import main
-    if main.ctx.debug:
-        print(msg_str("debug", msg))
+    context = main.ctx
+    if not to_stdout:
+        context.logger.removeHandler(context.logger_stdout_handler)
+    context.logger.log(level, msg)
+    if not to_stdout:
+        context.logger.addHandler(context.logger_stdout_handler)
+
+
+def msg_info(msg, to_stdout=True):
+    msg_raw(logging.INFO, msg, to_stdout)
+
+
+def msg_warn(msg, to_stdout=True):
+    msg_raw(logging.WARNING, msg, to_stdout)
+
+
+def msg_error(msg, to_stdout=True):
+    msg_raw(logging.ERROR, msg, to_stdout)
 
 
 def json_dumps():
@@ -69,34 +91,44 @@ class Task(object):
     Use for record the information of each test case
     '''
 
-    def __init__(self, description, flush=False):
+    def __init__(self, description, flush=False, quiet=False):
         self.passed = True
+        self.quiet = quiet
         self.messages = []
         self.timestamp = now()
         self.description = description
-        logging.info(description)
+        if not self.quiet:
+            msg_info(self.description, to_stdout=False)
         self.flush = flush
         from . import main
         self.prev_tasks = main.ctx.tasks
+        self.logger = main.ctx.logger
+        self.logger_stdout_handler = main.ctx.logger_stdout_handler
+        self.logger_file_handler = main.ctx.logger_file_handler
 
     def info(self, msg):
+        if self.quiet:
+            return
         self.msg_append("info", msg)
-        logging.info(msg)
+        msg_info(msg, to_stdout=self.flush)
 
     def warn(self, msg):
+        if self.quiet:
+            return
         self.msg_append("warn", msg)
-        logging.warning(msg)
+        msg_warn(msg, to_stdout=self.flush)
 
     def error(self, msg):
+        if self.quiet:
+            return
         self.msg_append("error", msg)
-        logging.error(msg)
+        msg_error(msg, to_stdout=self.flush)
 
     def msg_append(self, msg_type, msg):
         if msg_type in ("warn", "error"):
             self.passed = False
         self.messages.append((msg_type, msg, now()))
         if self.flush:
-            print(msg_str(msg_type, msg, now()))
             self.to_json()
             self.to_report()
 
@@ -115,18 +147,23 @@ class Task(object):
 class TaskCheck(Task):
 
     def __init__(self, description, quiet=False):
-        super(self.__class__, self).__init__(description)
-        self.quiet = quiet
+        super(self.__class__, self).__init__(description, quiet=quiet)
 
     def to_stdout(self):
-        print(msg_str("info", self.description, self.timestamp), end=' ')
+        self.logger.removeHandler(self.logger_file_handler)
+        self.logger_stdout_handler.setFormatter(MyFormatter(flush=False))
+
         if self.passed:
-            print("[{}]".format(CGREEN + "Pass" + CEND))
+            message = "{} [{}]".format(self.description, CGREEN + "Pass" + CEND)
         else:
-            print("[{}]".format(CRED + "Fail" + CEND))
+            message = "{} [{}]".format(self.description, CRED + "Fail" + CEND)
+        self.logger.info(message, extra={'timestamp': '[{}]'.format(self.timestamp)})
         
         for msg in self.messages:
-            print(msg_str(msg[0], msg[1], prefix='  '))
+            self.logger.log(LEVEL[msg[0]], msg[1], extra={'timestamp': '  '})
+
+        self.logger_stdout_handler.setFormatter(MyFormatter())
+        self.logger.addHandler(self.logger_file_handler)
 
     def to_json(self):
         self.build_base_result()
@@ -476,10 +513,6 @@ def anyone_kill(node, task, timeout=50):
     '''
     count = 0
     while count < int(timeout):
-        rc, out, _ = run_cmd("crm_mon -1|grep \"^Online:.* {} \"".format(node))
-        if rc == 0:
-            msg_debug("Node \"{}\" is online".format(node))
-
         rc, out, _ = run_cmd("crm_mon -1|grep -A1 \"Fencing Actions:\"")
         if rc == 0:
             match = re.search(r"of (.*) pending: .*origin=(.*)$", out)
