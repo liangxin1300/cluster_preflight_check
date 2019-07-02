@@ -1,16 +1,33 @@
-nguage: generic
+sudo: required
 services:
   - docker
-env:
-  matrix:
-    - DOCKER_TAG='liangxin1300/haleap:15.1'
-      PACKAGES='crmsh pacemaker corosync python3 iproute2 which iputils vim tar bzip2'
-    - DOCKER_TAG='liangxin1300/haleap:42.3'
-      PACKAGES='crmsh pacemaker corosync iproute2 which iputils vim tar bzip2 hostname'
-before_install:
-  - docker pull "${DOCKER_TAG}"
-script:
-  - docker run -d --name=hanode1 --hostname hanode1 --privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro ${DOCKER_TAG}
-  - docker exec -t hanode1 /bin/sh -c "zypper -n install ${PACKAGES}"
-  - docker exec -t hanode1 /bin/sh -c "crm cluster init -y"
-  - docker exec -t hanode1 /bin/sh -c "crm_mon -1"
+
+language: python
+
+stages:
+  - test
+
+jobs:
+  include:
+    - stage: test
+      python: 2.7
+      env: TOXENV=py27-codeclimate
+      install:
+          - pip install tox
+      script:
+          - tox
+
+    - stage: test
+      python: 3.6
+      env: TOXENV=py36-codeclimate
+      before_script:
+          - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+          - chmod +x ./cc-test-reporter
+          - ./cc-test-reporter before-build
+      install:
+          - pip install tox
+      script:
+          - tox
+      after_script:
+          - mv tests/coverage.xml .
+          - ./cc-test-reporter after-build -t coverage.py --exit-code $TRAVIS_TEST_RESULT tests/coverage.xml
