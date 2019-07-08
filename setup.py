@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="cluster_test_tool",
-    version="0.0.27",
+    version="0.0.28",
     author="Xin Liang",
     author_email="XLiang@suse.com",
     url="https://github.com/liangxin1300/clusterTestTool",

@@ -1,3 +1,12 @@
+* Mon Jul 8 2019 Xin Liang <XLiang@suse.com>
+- version 0.0.28
+- Improve logging
+- Add unittest codes
+- Add docs for functions
+- Using shell to wrap python2&3 entry
+- Make split brain by blocking corosync ports
+- Check firewall
+
 * Thu Jun 6 2019 Xin Liang <XLiang@suse.com>
 - version 0.0.23
 - Add log to record internal operations
