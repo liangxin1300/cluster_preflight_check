@@ -97,8 +97,7 @@ class Task(object):
         self.messages = []
         self.timestamp = now()
         self.description = description
-        if not self.quiet:
-            msg_info(self.description, to_stdout=False)
+        msg_info(self.description, to_stdout=False)
         self.flush = flush
         from . import main
         self.prev_tasks = main.ctx.tasks
@@ -107,20 +106,14 @@ class Task(object):
         self.logger_file_handler = main.ctx.logger_file_handler
 
     def info(self, msg):
-        if self.quiet:
-            return
         self.msg_append("info", msg)
         msg_info(msg, to_stdout=self.flush)
 
     def warn(self, msg):
-        if self.quiet:
-            return
         self.msg_append("warn", msg)
         msg_warn(msg, to_stdout=self.flush)
 
     def error(self, msg):
-        if self.quiet:
-            return
         self.msg_append("error", msg)
         msg_error(msg, to_stdout=self.flush)
 
@@ -446,6 +439,15 @@ def check_node_status(node, state):
     if not pattern.search(stdout):
         return False
     return True
+
+
+def online_nodes():
+    rc, stdout, stderr = run_cmd('crm_mon -1')
+    if rc == 0 and stdout:
+        res = re.search(r'Online:\s+\[\s(.*)\s\]', stdout)
+        if res:
+            return res.group(1).split()
+    return []
 
 
 def do_fence_happen(node, run_time):

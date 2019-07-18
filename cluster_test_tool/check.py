@@ -11,6 +11,7 @@ def check(context):
         check_environment()
     if context.cluster_check:
         check_cluster()
+    print()
 
 
 def check_environment():
@@ -176,7 +177,7 @@ def check_fencing():
     use_sbd = False
     rc, outp, _ = utils.run_cmd("crm_mon -r1 | grep '(stonith:.*):'")
     if rc == 0:
-        res = re.search(r'([^\s]+)\s+\(stonith:(.*)\):\s+(.*)\s', outp)
+        res = re.search(r'([^\s]+)\s+\(stonith:(.*)\):\s+(\w+)', outp)
         res_name, res_agent, res_state = res.groups()
         common_msg = "stonith resource {}({})".format(res_name, res_agent)
         state_msg = "{} is {}".format(common_msg, res_state)
@@ -216,7 +217,8 @@ def check_nodes():
     if rc == 0:
         # check DC
         res = re.search(r'Current DC: (.*) \(', outp)
-        task.info("DC node: {}".format(res.group(1)))
+        if res:
+            task.info("DC node: {}".format(res.group(1)))
 
         # check quorum
         if re.search(r'partition with quorum', outp):
@@ -226,7 +228,8 @@ def check_nodes():
 
         # check Online nodes
         res = re.search(r'Online:\s+(\[.*\])', outp)
-        task.info("Online nodes: {}".format(res.group(1)))
+        if res:
+            task.info("Online nodes: {}".format(res.group(1)))
 
         # check OFFLINE nodes
         res = re.search(r'OFFLINE:\s+(\[.*\])', outp)

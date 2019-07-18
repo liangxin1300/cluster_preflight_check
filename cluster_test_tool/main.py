@@ -69,10 +69,6 @@ def kill_testcase(context):
         task.error("Process {} is not restarted!".format(context.current_kill))
 
     def kill(context, task):
-        if "Fenced" in context.expected and not utils.fence_enabled():
-            task.error("stonith is not enabled!")
-            sys.exit(1)
-
         while True:
             if not is_process_running(context, task):
                 continue
@@ -104,6 +100,12 @@ def kill_testcase(context):
         if getattr(context, case):
             if case == 'pacemakerd' and context.loop:
                 return #blocked by bsc#1111692
+            if not check.check_cluster_service(quiet=True):
+                utils.msg_error("cluster not running!")
+                return
+            if case in ["sbd", 'corosync'] and not utils.fence_enabled():
+                utils.msg_error("stonith is not enabled!")
+                return
 
             context.current_kill = case
             context.expected = expected[case][1] if context.loop else expected[case][0]
@@ -115,9 +117,6 @@ def kill_testcase(context):
                                   expected=context.expected,
                                   looping=context.loop)
 
-            if not check.check_cluster_service(quiet=True):
-                task.error("cluster not running!")
-                return
             if not is_process_running(context, task):
                 return
 
@@ -136,12 +135,13 @@ def split_brain(context):
     '''
     if not context.sp_iptables:
         return
-
     if not utils.which("iptables"):
         return
-
     if not check.check_cluster_service(quiet=True):
         utils.msg_error("cluster not running!")
+        return
+    if len(utils.online_nodes()) < 2:
+        utils.msg_error("at least two nodes online!")
         return
 
     fence_enabled, fence_action, fence_timeout = utils.get_fence_info()
@@ -181,6 +181,9 @@ def fence_node(context):
     Testcase: fence specific node
     '''
     if not context.fence_node:
+        return
+    if not check.check_cluster_service(quiet=True):
+        utils.msg_error("cluster not running!")
         return
 
     # check required commands exists
@@ -311,15 +314,21 @@ For each --kill-* testcase, report directory: {}'''.format(context.logfile,
 
 
 def setup_logging(context):
+    '''
+    setupt logging
+    '''
+    # basic setting
     logging.basicConfig(level=logging.DEBUG)
     context.logger = logging.getLogger(context.name)
     context.logger.propagate = False
 
+    # setting handler for stdout
     stdout_handler = logging.StreamHandler()
     stdout_handler.setFormatter(utils.MyFormatter())
     context.logger_stdout_handler = stdout_handler
     context.logger.addHandler(context.logger_stdout_handler)
 
+    # setting handler for logfile
     context.logfile = "/var/log/{}.log".format(context.name)
     file_handler = logging.FileHandler(context.logfile)
     file_format = logging.Formatter('%(asctime)s %(name)s %(levelname)s: %(message)s',
@@ -329,9 +338,7 @@ def setup_logging(context):
     context.logger.addHandler(context.logger_file_handler)
 
 
-def run(context):
-    setup_logging(context)
-
+def setup_basic_context(context):
     context.py2 = sys.version_info[0] == 2
     context.tasks = []
     var_dir = "/var/lib/{}".format(context.name)
@@ -340,11 +347,17 @@ def run(context):
     context.report_path = var_dir
     context.jsonfile = "{}/{}.json".format(var_dir, context.name)
 
+
+def run(context):
+    '''
+    major work flow
+    '''
+    setup_logging(context)
+    setup_basic_context(context)
     parse_argument(context)
 
     try:
         check.check(context)
-        print()
         kill_testcase(context)
         fence_node(context)
         split_brain(context)
