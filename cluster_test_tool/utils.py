@@ -262,18 +262,19 @@ Fence timeout:     {}
 
 class TaskSplitBrain(Task):
 
-    def  __init__(self, description, fence_action, fence_timeout):
+    def  __init__(self, description, expected, fence_action, fence_timeout):
         super(self.__class__, self).__init__(description, flush=True)
+        self.expected = expected
         self.fence_action = fence_action
         self.fence_timeout = fence_timeout
 
     def header(self):
         h = '''==============================================
 Testcase:          {}
-Expected Result:   This node({}) get fenced
+Expected Result:   {}
 Fence action:      {}
 Fence timeout:     {}
-'''.format(self.description, me(), self.fence_action, self.fence_timeout)
+'''.format(self.description, self.expected, self.fence_action, self.fence_timeout)
         return h
 
     def to_json(self):
@@ -450,6 +451,16 @@ def online_nodes():
     return []
 
 
+def peer_node():
+    for n in online_nodes():
+        if n != me():
+            return n
+
+
+def str_to_datetime(str_time, fmt):
+    return datetime.strptime(str_time, fmt)
+
+
 def do_fence_happen(node, run_time):
     rc, stdout, stderr = run_cmd('stonith_admin -h {}'.format(node))
     if rc != 0:
@@ -458,8 +469,8 @@ def do_fence_happen(node, run_time):
     if re.search('Node {} last kicked at:'.format(node), stdout):
         kicked_time = stdout.split('at:')[1].strip()
         kicked_time_format = "%a %b %d %H:%M:%S %Y"
-        return int(run_time) < \
-               int(datetime.strptime(kicked_time, kicked_time_format).strftime("%s"))
+        return str_to_datetime(run_time, '%Y/%m/%d %H:%M:%S') < \
+               str_to_datetime(kicked_time, kicked_time_format)
     else:
         return False
 
@@ -509,7 +520,7 @@ def this_node():
     return os.uname()[1]
 
 
-def anyone_kill(node, task, timeout=50):
+def anyone_kill(task, timeout=50):
     '''
     Try to grab who will kill me
     '''
@@ -518,7 +529,7 @@ def anyone_kill(node, task, timeout=50):
         rc, out, _ = run_cmd("crm_mon -1|grep -A1 \"Fencing Actions:\"")
         if rc == 0:
             match = re.search(r"of (.*) pending: .*origin=(.*)$", out)
-            if match.group(1) == node:
+            if match:
                 task.info("Node \"{}\" will be fenced by \"{}\"!".format(match.group(1), match.group(2)))
                 break
 

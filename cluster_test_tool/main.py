@@ -80,7 +80,7 @@ def kill_testcase(context):
                 break
             # endless loop will lead to fence
 
-        thread_check = threading.Thread(target=utils.anyone_kill, args=(utils.me(), task))
+        thread_check = threading.Thread(target=utils.anyone_kill, args=(task, ))
         thread_check.start()
         check_restarted(context, task)
 
@@ -129,6 +129,20 @@ def kill_testcase(context):
             kill(context, task)
 
 
+def get_fence_info():
+    fence_enabled, fence_action, fence_timeout = utils.get_fence_info()
+    # check whether stonith is enabled
+    if not fence_enabled:
+        utils.msg_error("stonith is not enabled!")
+        sys.exit(1)
+    # get stonith action
+    if not fence_action:
+        sys.exit(1)
+    if not fence_timeout:
+        fence_timeout = config.FENCE_TIMEOUT
+    return fence_enabled, fence_action, fence_timeout
+
+
 def split_brain(context):
     '''
     Testcase: make split brain by blocking corosync ports
@@ -144,18 +158,13 @@ def split_brain(context):
         utils.msg_error("at least two nodes online!")
         return
 
-    fence_enabled, fence_action, fence_timeout = utils.get_fence_info()
-    # check whether stonith is enabled
-    if not fence_enabled:
-        utils.msg_error("stonith is not enabled!")
-        sys.exit(1)
-    # get stonith action
-    if not fence_action:
-        sys.exit(1)
-
-    if not fence_timeout:
-        fence_timeout = config.FENCE_TIMEOUT
-    task = utils.TaskSplitBrain("Block corosync ports",
+    if utils.service_is_active("firewalld.service"):
+        expected = "One of nodes get fenced"
+    elif utils.which("iptables"):
+        expected = "This node({}) get fenced".format(utils.me())
+    fence_enabled, fence_action, fence_timeout = get_fence_info()
+    task = utils.TaskSplitBrain("Simulate split brain by blocking corosync ports",
+                                expected=expected,
                                 fence_action=fence_action,
                                 fence_timeout=fence_timeout)
     task.print_header()
@@ -167,13 +176,35 @@ def split_brain(context):
     if not ports:
         task.error("Can not get corosync's port")
         return
-    task.info("Trying to temporarily block ports {}".format(ports))
-    for p in ports:
-        utils.run_cmd(config.BLOCK_PORT.format(p))
-    task.info("Waiting {}s for self {}...".format(fence_timeout, fence_action))
-    time.sleep(int(fence_timeout))
-    task.error("Am I Still live?:(")
-    sys.exit(1)
+
+    task.info("Trying to temporarily block port {}".format(','.join(ports)))
+    if utils.service_is_active("firewalld.service"):
+        for p in ports:
+            utils.run_cmd(config.REMOVE_PORT.format(port=p))
+
+        th= threading.Thread(target=utils.anyone_kill, args=(task, 100))
+        th.start()
+
+        count = 0
+        peer_node = utils.peer_node()
+        while count < int(fence_timeout):
+            if utils.do_fence_happen(peer_node, task.timestamp):
+                task.info("Node \"{}\" has been fenced successfully".format(peer_node))
+                break
+            time.sleep(1)
+            count += 1
+
+        for p in ports:
+            utils.run_cmd(config.ADD_PORT.format(port=p))
+        task.info("Trying to add port {}".format(','.join(ports)))
+
+    elif utils.which("iptables"):
+        for p in ports:
+            utils.run_cmd(config.BLOCK_PORT.format(port=p))
+        task.info("Waiting {}s for self {}...".format(fence_timeout, fence_action))
+        time.sleep(int(fence_timeout))
+        task.error("Node \"{}\" is still live".format(utils.me()))
+        sys.exit(1)
 
 
 def fence_node(context):
@@ -198,17 +229,7 @@ def fence_node(context):
         utils.msg_error("Node \"{}\" not in cluster!".format(node))
         sys.exit(1)
 
-    fence_enabled, fence_action, fence_timeout = utils.get_fence_info()
-    # check whether stonith is enabled
-    if not fence_enabled:
-        utils.msg_error("stonith is not enabled!")
-        sys.exit(1)
-    # get stonith action
-    if not fence_action:
-        sys.exit(1)
-    if not fence_timeout:
-        fence_timeout = config.FENCE_TIMEOUT
-
+    fence_enabled, fence_action, fence_timeout = get_fence_info()
     task = utils.TaskFence("Fence node {}".format(node),
                            fence_action=fence_action,
                            fence_timeout=fence_timeout)
@@ -219,7 +240,7 @@ def fence_node(context):
 
     task.info("Trying to fence node \"{}\"".format(node))
 
-    thread_check = threading.Thread(target=utils.anyone_kill, args=(node, task, fence_timeout))
+    thread_check = threading.Thread(target=utils.anyone_kill, args=(task, fence_timeout))
     utils.run_cmd(config.FENCE_NODE.format(node), wait=False)
     if node == utils.me():
         # fence self
