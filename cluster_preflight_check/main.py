@@ -281,7 +281,7 @@ class MyFormatter(RawTextHelpFormatter):
 
 def parse_argument(context):
     parser = argparse.ArgumentParser(prog=context.name,
-                                     description='Cluster Testing Tool Set',
+                                     description='Cluster preflight check tool set',
                                      add_help=False,
                                      formatter_class=MyFormatter,
                                      epilog='''

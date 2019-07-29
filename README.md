@@ -1,4 +1,4 @@
-# clusterTestTool
+# cluster-preflight-check
 Tool for Standardize Testing of Basic Cluster Functionality
 
 ## Features
@@ -17,7 +17,7 @@ Tool for Standardize Testing of Basic Cluster Functionality
 * kill corosync daemon
 * kill pacemakerd daemon
 
-When running killing test case, a report will be created at /var/lib/cluster-test-tool;<br>
+When running killing test case, a report will be created at /var/lib/cluster-preflight-check;<br>
 Report will includes test case description, action logging and explanation for possible results.
 #### Fence specific node
 #### Make split brain
@@ -27,16 +27,16 @@ Report will includes test case description, action logging and explanation for p
 * Tested in SLE12sp3, SLE12sp4 and SLE15sp1
 
 ## Install
-pip install cluster-test-tool
+pip install cluster-preflight-check
 
 ## Use
-cluster-test-tool --help
+cluster-preflight-check --help
 ```
-usage: cluster-test-tool [-e] [-c]
-                         [--kill-sbd | --kill-corosync | --kill-pacemakerd | --fence-node NODE | --split-brain-iptables]
-                         [-l] [-y] [-h]
+usage: cluster-preflight-check [-e] [-c]
+                               [--kill-sbd | --kill-corosync | --kill-pacemakerd | --fence-node NODE | --split-brain-iptables]
+                               [-l] [-y] [-h]
 
-Cluster Testing Tool Set
+Cluster preflight check tool set
 
 optional arguments:
   -e, --env-check         Check environment
@@ -52,9 +52,9 @@ other options:
   -y, --yes               Answer "yes" if asked to run the test
   -h, --help              show this help message and exit
 
-Log: /var/log/cluster-test-tool.log
-Json results: /var/lib/cluster-test-tool/cluster-test-tool.json
-For each --kill-* testcase, report directory: /var/lib/cluster-test-tool
+Log: /var/log/cluster-preflight-check.log
+Json results: /var/lib/cluster-preflight-check/cluster-preflight-check.json
+For each --kill-* testcase, report directory: /var/lib/cluster-preflight-check
 ```
 
 

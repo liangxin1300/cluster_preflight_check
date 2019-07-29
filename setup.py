@@ -1,15 +1,15 @@
 import setuptools
 
 setuptools.setup(
-    name="cluster_test_tool",
-    version="0.0.28",
+    name="cluster_preflight_check",
+    version="0.0.29",
     author="Xin Liang",
     author_email="XLiang@suse.com",
-    url="https://github.com/liangxin1300/clusterTestTool",
+    url="https://github.com/liangxin1300/cluster_preflight_check.git",
     license="BSD",
     packages=setuptools.find_packages(),
     description="Tool for Standardize Testing of Basic Cluster Functionality",
-    scripts=['bin/cluster-test-tool'],
+    scripts=['bin/cluster-preflight-check'],
     classifiers=[
           "Development Status :: 3 - Alpha",
           "Intended Audience :: System Administrators",
