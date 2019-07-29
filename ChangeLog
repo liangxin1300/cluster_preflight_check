@@ -1,3 +1,12 @@
+* Mon Jul 29 2019 Xin Liang <XLiang@suse.com>
+- version 0.0.29
+- Rename cluster-test-tool to cluster-preflight-check
+- Improve scenarios for blocking corosync ports to simulate split brain
+- Improve for:
+  * fix regrex mismatch/None results
+  * reinforce testcase enter condition
+  * more docstring and comments
+
 * Mon Jul 8 2019 Xin Liang <XLiang@suse.com>
 - version 0.0.28
 - Improve logging
