@@ -457,6 +457,33 @@ def peer_node():
             return n
 
 
+def this_node_id():
+    rc, out, err = run_cmd("corosync-cmapctl -b runtime.votequorum.this_node_id")
+    if rc != 0:
+        msg_error(err)
+        sys.exit(1)
+    else:
+        return out.split('=')[1].strip()
+
+
+def peer_node_iplist():
+    rc, out, err = run_cmd("corosync-cmapctl -b runtime.totem.pg.mrp.srp.members")
+    if rc != 0:
+        msg_error(err)
+        sys.exit(1)
+
+    ip_list = []
+    for line in out.split('\n'):
+        if '.ip ' not in line:
+            continue
+        if '.{}.'.format(this_node_id()) in line:
+            continue
+        match = re.search(r'ip\((.*)\)', line)
+        if match:
+            ip_list.append(match.group(1))
+    return ip_list
+
+
 def str_to_datetime(str_time, fmt):
     return datetime.strptime(str_time, fmt)
 

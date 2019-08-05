@@ -158,10 +158,7 @@ def split_brain(context):
         utils.msg_error("at least two nodes online!")
         return
 
-    if utils.service_is_active("firewalld.service"):
-        expected = "One of nodes get fenced"
-    elif utils.which("iptables"):
-        expected = "This node({}) get fenced".format(utils.me())
+    expected = "One of nodes get fenced"
     fence_enabled, fence_action, fence_timeout = get_fence_info()
     task = utils.TaskSplitBrain("Simulate split brain by blocking corosync ports",
                                 expected=expected,
@@ -177,34 +174,35 @@ def split_brain(context):
         task.error("Can not get corosync's port")
         return
 
-    task.info("Trying to temporarily block port {}".format(','.join(ports)))
     if utils.service_is_active("firewalld.service"):
+        task.info("Trying to temporarily block port {}".format(','.join(ports)))
         for p in ports:
             utils.run_cmd(config.REMOVE_PORT.format(port=p))
+    elif utils.which("iptables"):
+        task.info("Trying to temporarily block peer communication ip")
+        for ip in utils.peer_node_iplist():
+            utils.run_cmd(config.BLOCK_IP.format(action='I', peer_ip=ip))
 
-        th= threading.Thread(target=utils.anyone_kill, args=(task, 100))
-        th.start()
+    th= threading.Thread(target=utils.anyone_kill, args=(task, 100))
+    th.start()
 
-        count = 0
-        peer_node = utils.peer_node()
-        while count < int(fence_timeout):
-            if utils.do_fence_happen(peer_node, task.timestamp):
-                task.info("Node \"{}\" has been fenced successfully".format(peer_node))
-                break
-            time.sleep(1)
-            count += 1
+    count = 0
+    peer_node = utils.peer_node()
+    while count < int(fence_timeout):
+        if utils.do_fence_happen(peer_node, task.timestamp):
+            task.info("Node \"{}\" has been fenced successfully".format(peer_node))
+            break
+        time.sleep(1)
+        count += 1
 
+    if utils.service_is_active("firewalld.service"):
+        task.info("Trying to add port {}".format(','.join(ports)))
         for p in ports:
             utils.run_cmd(config.ADD_PORT.format(port=p))
-        task.info("Trying to add port {}".format(','.join(ports)))
-
     elif utils.which("iptables"):
-        for p in ports:
-            utils.run_cmd(config.BLOCK_PORT.format(port=p))
-        task.info("Waiting {}s for self {}...".format(fence_timeout, fence_action))
-        time.sleep(int(fence_timeout))
-        task.error("Node \"{}\" is still live".format(utils.me()))
-        sys.exit(1)
+        task.info("Trying to recover peer communication ip")
+        for ip in utils.peer_node_iplist():
+            utils.run_cmd(config.BLOCK_IP.format(action='D', peer_ip=ip))
 
 
 def fence_node(context):
