@@ -9,7 +9,10 @@ setuptools.setup(
     license="BSD",
     packages=setuptools.find_packages(),
     description="Tool for Standardize Testing of Basic Cluster Functionality",
-    scripts=['bin/cluster-preflight-check'],
+    # scripts=['bin/cluster-preflight-check'],
+    entry_points={
+        'console_scripts': ['cluster-preflight-check=cluster_preflight_check.main:main'],
+    },
     classifiers=[
           "Development Status :: 3 - Alpha",
           "Intended Audience :: System Administrators",

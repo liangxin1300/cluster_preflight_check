@@ -387,4 +387,7 @@ def run(context):
         sys.exit(1)
 
 
-ctx = Context()
+def main():
+    ctx = Context()
+    run(ctx)
+
