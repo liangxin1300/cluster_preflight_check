@@ -371,6 +371,10 @@ def run(context):
     '''
     major work flow
     '''
+    if os.getuid() != 0:
+        print("Error: {} can only be executed as user root!".format(context.name))
+        sys.exit(1)
+
     setup_logging(context)
     setup_basic_context(context)
     parse_argument(context)
