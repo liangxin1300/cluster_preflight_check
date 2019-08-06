@@ -183,7 +183,7 @@ def split_brain(context):
         for ip in utils.peer_node_iplist():
             utils.run_cmd(config.BLOCK_IP.format(action='I', peer_ip=ip))
 
-    th= threading.Thread(target=utils.anyone_kill, args=(task, 100))
+    th= threading.Thread(target=utils.anyone_kill, args=(task, 100, True))
     th.start()
 
     count = 0

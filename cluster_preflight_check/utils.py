@@ -547,7 +547,7 @@ def this_node():
     return os.uname()[1]
 
 
-def anyone_kill(task, timeout=50):
+def anyone_kill(task, timeout=50, maybe=False):
     '''
     Try to grab who will kill me
     '''
@@ -558,6 +558,8 @@ def anyone_kill(task, timeout=50):
             match = re.search(r"of (.*) pending: .*origin=(.*)$", out)
             if match:
                 task.info("Node \"{}\" will be fenced by \"{}\"!".format(match.group(1), match.group(2)))
+                if maybe:
+                    task.info("Or, this node(\"{}\") might be fenced by other node".format(me()))
                 break
 
         time.sleep(0.1)
