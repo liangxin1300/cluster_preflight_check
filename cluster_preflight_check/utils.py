@@ -582,3 +582,7 @@ def corosync_port():
     if rc == 0:
         ports = out.split('\n')
     return ports
+
+
+def is_root():
+    return os.getuid() == 0

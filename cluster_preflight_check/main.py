@@ -349,6 +349,8 @@ def setup_logging(context):
 
     # setting handler for logfile
     context.logfile = "/var/log/{}.log".format(context.name)
+    if not utils.is_root():
+        return
     file_handler = logging.FileHandler(context.logfile)
     file_format = logging.Formatter('%(asctime)s %(name)s %(levelname)s: %(message)s',
                                     datefmt='%Y/%m/%d %H:%M:%S')
@@ -361,7 +363,7 @@ def setup_basic_context(context):
     context.py2 = sys.version_info[0] == 2
     context.tasks = []
     var_dir = "/var/lib/{}".format(context.name)
-    if not os.path.exists(var_dir):
+    if utils.is_root() and not os.path.exists(var_dir):
         os.mkdir(var_dir)
     context.report_path = var_dir
     context.jsonfile = "{}/{}.json".format(var_dir, context.name)
@@ -371,13 +373,13 @@ def run(context):
     '''
     major work flow
     '''
-    if os.getuid() != 0:
-        print("Error: {} can only be executed as user root!".format(context.name))
-        sys.exit(1)
-
     setup_logging(context)
     setup_basic_context(context)
     parse_argument(context)
+
+    if not utils.is_root():
+        context.logger.fatal("{} can only be executed as user root!".format(context.name))
+        sys.exit(1)
 
     try:
         check.check(context)
