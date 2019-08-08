@@ -60,4 +60,8 @@ For each --kill-* testcase, report directory: /var/lib/cluster-preflight-check
 
 
 ## Demo
-https://asciinema.org/a/248538
+1. [using cluster-preflight-check to check environment and cluster status](https://asciinema.org/a/261409)
+2. [using cluster-preflight-check to kill sbd process](https://asciinema.org/a/261411)
+3. [using cluster-preflight-check to kill corosync process](https://asciinema.org/a/261412)
+4. [using cluster-preflight-check to fence specific node](https://asciinema.org/a/261413)
+5. [using cluster-preflight-check to simulate split brain](https://asciinema.org/a/261414)
