@@ -387,4 +387,8 @@ def run(context):
         sys.exit(1)
 
 
-ctx = Context()
+def main():
+    ctx = Context()
+    ctx.name = os.path.basename(sys.argv[0])
+    run(ctx)
+
