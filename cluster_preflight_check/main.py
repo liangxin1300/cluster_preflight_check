@@ -8,6 +8,7 @@ import getpass
 import time
 import threading
 import logging
+logger = logging.getLogger('cpc')
 from argparse import RawTextHelpFormatter
 from datetime import datetime
 
@@ -336,6 +337,37 @@ def setup_logging(context):
     '''
     setupt logging
     '''
+    LOGGING_CFG = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'file_formatter': {
+                'format': '%(asctime)s %(name)s %(levelname)s: %(message)s',
+                'datefmt': '%Y/%m/%d %H:%M:%S'
+            }
+        },
+        'handlers': {
+            'file': {
+                'class': 'logging.FileHandler',
+                'filename': '/var/log/{}.log'.format(context.name),
+                'formatter': 'file_formatter'
+            },
+            'stream': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'file_formatter'
+            }
+        },
+        'loggers': {
+            'cpc': {
+                'handlers': ['file', 'stream'],
+                'propagate': False
+            }
+        }
+    }
+
+    logging.config.dictConfig(LOGGING_CFG)
+    print(logger.handlers)
+    '''
     # basic setting
     logging.basicConfig(level=logging.DEBUG)
     context.logger = logging.getLogger(context.name)
@@ -355,7 +387,7 @@ def setup_logging(context):
     file_handler.setFormatter(file_format)
     context.logger_file_handler = file_handler
     context.logger.addHandler(context.logger_file_handler)
-
+    '''
 
 def setup_basic_context(context):
     context.py2 = sys.version_info[0] == 2
