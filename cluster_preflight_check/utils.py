@@ -583,3 +583,15 @@ def corosync_port():
     if rc == 0:
         ports = out.split('\n')
     return ports
+
+
+def get_file_handler(logger):
+    for h in logger.handlers:
+        if isinstance(h, logging.FileHandler):
+            return h
+
+
+def get_stream_handler(logger):
+    for h in logger.handlers:
+        if isinstance(h, logging.StreamHandler):
+            return h
