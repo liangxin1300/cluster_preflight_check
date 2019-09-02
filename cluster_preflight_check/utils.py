@@ -57,13 +57,12 @@ def now(form="%Y/%m/%d %H:%M:%S"):
 
 
 def msg_raw(level, msg, to_stdout=True):
-    from . import main
-    context = main.ctx
+    stream_handler = get_stream_handler(logger)
     if not to_stdout:
-        context.logger.removeHandler(context.logger_stdout_handler)
-    context.logger.log(level, msg)
+        logger.removeHandler(stream_handler)
+    logger.log(level, msg)
     if not to_stdout:
-        context.logger.addHandler(context.logger_stdout_handler)
+        logger.addHandler(stream_handler)
 
 
 def msg_info(msg, to_stdout=True):
@@ -102,9 +101,6 @@ class Task(object):
         self.flush = flush
         from . import main
         self.prev_tasks = main.ctx.tasks
-        self.logger = main.ctx.logger
-        self.logger_stdout_handler = main.ctx.logger_stdout_handler
-        self.logger_file_handler = main.ctx.logger_file_handler
 
     def info(self, msg):
         self.msg_append("info", msg)
@@ -144,20 +140,21 @@ class TaskCheck(Task):
         super(self.__class__, self).__init__(description, quiet=quiet)
 
     def to_stdout(self):
-        self.logger.removeHandler(self.logger_file_handler)
-        self.logger_stdout_handler.setFormatter(MyFormatter(flush=False))
+        file_handler = get_file_handler(logger)
+        logger.removeHandler(file_handler)
+        get_stream_handler(logger).setFormatter(MyFormatter(flush=False))
 
         if self.passed:
             message = "{} [{}]".format(self.description, CGREEN + "Pass" + CEND)
         else:
             message = "{} [{}]".format(self.description, CRED + "Fail" + CEND)
-        self.logger.info(message, extra={'timestamp': '[{}]'.format(self.timestamp)})
+        logger.info(message, extra={'timestamp': '[{}]'.format(self.timestamp)})
         
         for msg in self.messages:
-            self.logger.log(LEVEL[msg[0]], msg[1], extra={'timestamp': '  '})
+            logger.log(LEVEL[msg[0]], msg[1], extra={'timestamp': '  '})
 
-        self.logger_stdout_handler.setFormatter(MyFormatter())
-        self.logger.addHandler(self.logger_file_handler)
+        get_stream_handler(logger).setFormatter(MyFormatter())
+        logger.addHandler(file_handler)
 
     def to_json(self):
         self.build_base_result()

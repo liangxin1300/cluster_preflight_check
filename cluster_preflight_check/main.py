@@ -373,7 +373,6 @@ def setup_logging(context):
     }
 
     logging.config.dictConfig(LOGGING_CFG)
-    print(logger.handlers)
     '''
     # basic setting
     logging.basicConfig(level=logging.DEBUG)
