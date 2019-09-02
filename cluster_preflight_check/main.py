@@ -22,6 +22,7 @@ from . import utils
 class Context(object):
     def __setattr__(self, name, value):
         super(Context, self).__setattr__(name, value)
+ctx = Context()
 
 
 def login(func):
@@ -426,7 +427,5 @@ def run(context):
 
 
 def main():
-    ctx = Context()
     ctx.name = os.path.basename(sys.argv[0])
     run(ctx)
-
