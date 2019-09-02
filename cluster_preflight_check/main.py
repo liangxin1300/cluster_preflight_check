@@ -9,6 +9,7 @@ import time
 import threading
 import logging
 logger = logging.getLogger('cpc')
+import logging.config
 from argparse import RawTextHelpFormatter
 from datetime import datetime
 
