@@ -338,6 +338,8 @@ def setup_logging(context):
     '''
     setupt logging
     '''
+    context.logfile = "/var/log/{}.log".format(context.name)
+
     LOGGING_CFG = {
         'version': 1,
         'disable_existing_loggers': False,
@@ -348,9 +350,12 @@ def setup_logging(context):
             }
         },
         'handlers': {
+            'null': {
+                'class': 'logging.NullHandler'
+            },
             'file': {
                 'class': 'logging.FileHandler',
-                'filename': '/var/log/{}.log'.format(context.name),
+                'filename': context.logfile,
                 'formatter': 'file_formatter'
             },
             'stream': {
@@ -360,7 +365,7 @@ def setup_logging(context):
         },
         'loggers': {
             'cpc': {
-                'handlers': ['file', 'stream'],
+                'handlers': ['null', 'file', 'stream'],
                 'propagate': False
             }
         }
