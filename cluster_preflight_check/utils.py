@@ -6,6 +6,7 @@ import time
 import socket
 import json
 import logging
+logger = logging.getLogger('cpc')
 from datetime import datetime
 
 
