@@ -592,3 +592,7 @@ def get_stream_handler(logger):
     for h in logger.handlers:
         if getattr(h, '_name') == 'stream':
             return h
+
+
+def is_root():
+    return os.getuid() == 0

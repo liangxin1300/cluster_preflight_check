@@ -9,6 +9,7 @@ import time
 import threading
 import logging
 logger = logging.getLogger('cpc')
+logging.basicConfig(level=logging.DEBUG)
 import logging.config
 from argparse import RawTextHelpFormatter
 from datetime import datetime
@@ -368,8 +369,7 @@ def setup_logging(context):
         'loggers': {
             'cpc': {
                 'handlers': ['null', 'file', 'stream'],
-                'propagate': False,
-                'level': 'DEBUG'
+                'propagate': False
             }
         }
     }
@@ -393,6 +393,11 @@ def run(context):
     '''
     setup_basic_context(context)
     parse_argument(context)
+    if not utils.is_root():
+        logging.fatal("{} can only be executed as user root!".format(context.name))
+        sys.exit(1)
+    if not os.path.exists(context.var_dir):
+        os.mkdir(context.var_dir)
     setup_logging(context)
 
     try:
