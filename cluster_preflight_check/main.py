@@ -339,8 +339,6 @@ def setup_logging(context):
     '''
     setupt logging
     '''
-    context.logfile = "/var/log/{}.log".format(context.name)
-
     LOGGING_CFG = {
         'version': 1,
         'disable_existing_loggers': False,
@@ -383,19 +381,19 @@ def setup_basic_context(context):
     context.py2 = sys.version_info[0] == 2
     context.tasks = []
     var_dir = "/var/lib/{}".format(context.name)
-    if not os.path.exists(var_dir):
-        os.mkdir(var_dir)
+    context.var_dir = var_dir
     context.report_path = var_dir
     context.jsonfile = "{}/{}.json".format(var_dir, context.name)
+    context.logfile = "/var/log/{}.log".format(context.name)
 
 
 def run(context):
     '''
     major work flow
     '''
-    setup_logging(context)
     setup_basic_context(context)
     parse_argument(context)
+    setup_logging(context)
 
     try:
         check.check(context)
