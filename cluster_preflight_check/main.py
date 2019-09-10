@@ -398,7 +398,7 @@ def run(context):
         logging.fatal("{} can only be executed as user root!".format(context.name))
         sys.exit(1)
     if not os.path.exists(context.var_dir):
-        os.mkdir(context.var_dir)
+        os.makedirs(context.var_dir, exist_ok=True)
     setup_logging(context)
 
     try:
