@@ -8,8 +8,6 @@ import getpass
 import time
 import threading
 import logging
-logger = logging.getLogger('cpc')
-logging.basicConfig(level=logging.DEBUG)
 import logging.config
 from argparse import RawTextHelpFormatter
 from datetime import datetime
@@ -19,6 +17,8 @@ from . import config
 from . import pam
 from . import utils
 
+
+logger = logging.getLogger('cpc')
 
 class Context(object):
     def __setattr__(self, name, value):
@@ -369,7 +369,8 @@ def setup_logging(context):
         'loggers': {
             'cpc': {
                 'handlers': ['null', 'file', 'stream'],
-                'propagate': False
+                'propagate': False,
+                'level': 'DEBUG'
             }
         }
     }

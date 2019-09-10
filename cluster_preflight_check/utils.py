@@ -6,9 +6,10 @@ import time
 import socket
 import json
 import logging
-logger = logging.getLogger('cpc')
 from datetime import datetime
 
+
+logger = logging.getLogger('cpc')
 
 CRED = '\033[31m'
 CYELLOW = '\033[33m'
