@@ -8,6 +8,7 @@ import getpass
 import time
 import threading
 import logging
+import logging.config
 from argparse import RawTextHelpFormatter
 from datetime import datetime
 
@@ -17,9 +18,12 @@ from . import pam
 from . import utils
 
 
+logger = logging.getLogger('cpc')
+
 class Context(object):
     def __setattr__(self, name, value):
         super(Context, self).__setattr__(name, value)
+ctx = Context()
 
 
 def login(func):
@@ -336,44 +340,66 @@ def setup_logging(context):
     '''
     setupt logging
     '''
-    # basic setting
-    logging.basicConfig(level=logging.DEBUG)
-    context.logger = logging.getLogger(context.name)
-    context.logger.propagate = False
+    LOGGING_CFG = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'file_formatter': {
+                'format': '%(asctime)s %(name)s %(levelname)s: %(message)s',
+                'datefmt': '%Y/%m/%d %H:%M:%S'
+            },
+            'stream_formatter': {
+                '()': 'cluster_preflight_check.utils.MyFormatter'
+            }
+        },
+        'handlers': {
+            'null': {
+                'class': 'logging.NullHandler'
+            },
+            'file': {
+                'class': 'logging.FileHandler',
+                'filename': context.logfile,
+                'formatter': 'file_formatter'
+            },
+            'stream': {
+                'class': 'logging.StreamHandler',
+                'formatter': 'stream_formatter'
+            }
+        },
+        'loggers': {
+            'cpc': {
+                'handlers': ['null', 'file', 'stream'],
+                'propagate': False,
+                'level': 'DEBUG'
+            }
+        }
+    }
 
-    # setting handler for stdout
-    stdout_handler = logging.StreamHandler()
-    stdout_handler.setFormatter(utils.MyFormatter())
-    context.logger_stdout_handler = stdout_handler
-    context.logger.addHandler(context.logger_stdout_handler)
-
-    # setting handler for logfile
-    context.logfile = "/var/log/{}.log".format(context.name)
-    file_handler = logging.FileHandler(context.logfile)
-    file_format = logging.Formatter('%(asctime)s %(name)s %(levelname)s: %(message)s',
-                                    datefmt='%Y/%m/%d %H:%M:%S')
-    file_handler.setFormatter(file_format)
-    context.logger_file_handler = file_handler
-    context.logger.addHandler(context.logger_file_handler)
+    logging.config.dictConfig(LOGGING_CFG)
 
 
 def setup_basic_context(context):
     context.py2 = sys.version_info[0] == 2
     context.tasks = []
     var_dir = "/var/lib/{}".format(context.name)
-    if not os.path.exists(var_dir):
-        os.mkdir(var_dir)
+    context.var_dir = var_dir
     context.report_path = var_dir
     context.jsonfile = "{}/{}.json".format(var_dir, context.name)
+    context.logfile = "/var/log/{}.log".format(context.name)
 
 
 def run(context):
     '''
     major work flow
     '''
-    setup_logging(context)
     setup_basic_context(context)
     parse_argument(context)
+    if not utils.is_root():
+        logging.fatal("{} can only be executed as user root!".format(context.name))
+        sys.exit(1)
+    if not os.path.exists(context.var_dir):
+        os.makedirs(context.var_dir, exist_ok=True)
+    setup_logging(context)
 
     try:
         check.check(context)
@@ -388,7 +414,5 @@ def run(context):
 
 
 def main():
-    ctx = Context()
     ctx.name = os.path.basename(sys.argv[0])
     run(ctx)
-
