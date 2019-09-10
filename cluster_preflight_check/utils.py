@@ -7,6 +7,7 @@ import socket
 import json
 import logging
 from datetime import datetime
+from contextlib import contextmanager
 
 
 logger = logging.getLogger('cpc')
@@ -57,13 +58,21 @@ def now(form="%Y/%m/%d %H:%M:%S"):
     return datetime.now().strftime(form)
 
 
+@contextmanager
+def manage_hander(_type, keep=True):
+    try:
+        handler = get_handler(logger, _type)
+        if not keep:
+            logger.removeHandler(handler)
+        yield
+    finally:
+        if not keep:
+            logger.addHandler(handler)
+
+
 def msg_raw(level, msg, to_stdout=True):
-    stream_handler = get_stream_handler(logger)
-    if not to_stdout:
-        logger.removeHandler(stream_handler)
-    logger.log(level, msg)
-    if not to_stdout:
-        logger.addHandler(stream_handler)
+    with manage_hander("stream", to_stdout):
+        logger.log(level, msg)
 
 
 def msg_info(msg, to_stdout=True):
@@ -141,21 +150,19 @@ class TaskCheck(Task):
         super(self.__class__, self).__init__(description, quiet=quiet)
 
     def to_stdout(self):
-        file_handler = get_file_handler(logger)
-        logger.removeHandler(file_handler)
-        get_stream_handler(logger).setFormatter(MyFormatter(flush=False))
+        with manage_hander("file", keep=False):
+            get_handler(logger, "stream").setFormatter(MyFormatter(flush=False))
 
-        if self.passed:
-            message = "{} [{}]".format(self.description, CGREEN + "Pass" + CEND)
-        else:
-            message = "{} [{}]".format(self.description, CRED + "Fail" + CEND)
-        logger.info(message, extra={'timestamp': '[{}]'.format(self.timestamp)})
+            if self.passed:
+                message = "{} [{}]".format(self.description, CGREEN + "Pass" + CEND)
+            else:
+                message = "{} [{}]".format(self.description, CRED + "Fail" + CEND)
+            logger.info(message, extra={'timestamp': '[{}]'.format(self.timestamp)})
         
-        for msg in self.messages:
-            logger.log(LEVEL[msg[0]], msg[1], extra={'timestamp': '  '})
+            for msg in self.messages:
+                logger.log(LEVEL[msg[0]], msg[1], extra={'timestamp': '  '})
 
-        get_stream_handler(logger).setFormatter(MyFormatter())
-        logger.addHandler(file_handler)
+            get_handler(logger, "stream").setFormatter(MyFormatter())
 
     def to_json(self):
         self.build_base_result()
@@ -583,15 +590,9 @@ def corosync_port():
     return ports
 
 
-def get_file_handler(logger):
+def get_handler(logger, _type):
     for h in logger.handlers:
-        if getattr(h, '_name') == 'file':
-            return h
-
-
-def get_stream_handler(logger):
-    for h in logger.handlers:
-        if getattr(h, '_name') == 'stream':
+        if getattr(h, '_name') == _type:
             return h
 
 
