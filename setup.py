@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="cluster_preflight_check",
-    version="0.0.29",
+    version="0.0.33",
     author="Xin Liang",
     author_email="XLiang@suse.com",
     url="https://github.com/liangxin1300/cluster_preflight_check.git",
