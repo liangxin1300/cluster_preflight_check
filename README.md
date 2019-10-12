@@ -17,7 +17,7 @@ Tool for Standardize Testing of Basic Cluster Functionality
 * kill corosync daemon
 * kill pacemakerd daemon
 
-When running killing test case, a report will be created at /var/lib/cluster-preflight-check;<br>
+When running killing test case, a report will be created at /var/lib/ha-cluster-preflight-check;<br>
 Report will includes test case description, action logging and explanation for possible results.
 #### Fence specific node
 #### Make split brain
@@ -30,11 +30,11 @@ Report will includes test case description, action logging and explanation for p
 pip install cluster-preflight-check
 
 ## Use
-cluster-preflight-check --help
+ha-cluster-preflight-check --help
 ```
-usage: cluster-preflight-check [-e] [-c]
-                               [--kill-sbd | --kill-corosync | --kill-pacemakerd | --fence-node NODE | --split-brain-iptables]
-                               [-l] [-y] [-h]
+usage: ha-cluster-preflight-check [-e] [-c]
+                                  [--kill-sbd | --kill-corosync | --kill-pacemakerd | --fence-node NODE | --split-brain-iptables]
+                                  [-l] [-y] [-h]
 
 Cluster preflight check tool set
 
@@ -52,16 +52,16 @@ other options:
   -y, --yes               Answer "yes" if asked to run the test
   -h, --help              show this help message and exit
 
-Log: /var/log/cluster-preflight-check.log
-Json results: /var/lib/cluster-preflight-check/cluster-preflight-check.json
-For each --kill-* testcase, report directory: /var/lib/cluster-preflight-check
+Log: /var/log/ha-cluster-preflight-check.log
+Json results: /var/lib/ha-cluster-preflight-check/ha-cluster-preflight-check.json
+For each --kill-* testcase, report directory: /var/lib/ha-cluster-preflight-check
 ```
 
 
 
 ## Demo
-1. [using cluster-preflight-check to check environment and cluster status](https://asciinema.org/a/261409)
-2. [using cluster-preflight-check to kill sbd process](https://asciinema.org/a/261411)
-3. [using cluster-preflight-check to kill corosync process](https://asciinema.org/a/261412)
-4. [using cluster-preflight-check to fence specific node](https://asciinema.org/a/261413)
-5. [using cluster-preflight-check to simulate split brain](https://asciinema.org/a/261414)
+1. [using cluster-preflight-check to check environment and cluster status](https://asciinema.org/a/273850)
+2. [using cluster-preflight-check to kill sbd process](https://asciinema.org/a/273851)
+3. [using cluster-preflight-check to kill corosync process](https://asciinema.org/a/273852)
+4. [using cluster-preflight-check to fence specific node](https://asciinema.org/a/273853)
+5. [using cluster-preflight-check to simulate split brain](https://asciinema.org/a/273854)
