@@ -25,6 +25,7 @@ except ImportError:
 
 from cluster_preflight_check import utils, main
 
+
 class TestUtils(unittest.TestCase):
     '''
     Unitary tests for cluster_preflight_check/utils.py
@@ -71,23 +72,13 @@ class TestUtils(unittest.TestCase):
     
     @mock.patch('cluster_preflight_check.utils.datetime')
     def test_now(self, mock_datetime):
-        mock_datetime.now.return_value = datetime.datetime(2019, 7, 5, 14, 44, 55, 360460)
+        mock_now = mock.Mock()
+        mock_datetime.now.return_value = mock_now
+        mock_now.strftime.return_value = "2019/07/05 14:44:55"
         result = utils.now()
         self.assertEqual(result, "2019/07/05 14:44:55")
         mock_datetime.now.assert_called_once_with()
-    '''
-    @mock.patch('cluster_preflight_check.main')
-    def test_msg_raw(self, mock_main):
-        utils.msg_raw(logging.INFO, "testing logger")
-        mock_main.ctx.logger.log.assert_called_once_with(logging.INFO, "testing logger")
-
-    @mock.patch('cluster_preflight_check.main')
-    def test_msg_raw_disable_stdout(self, mock_main):
-        utils.msg_raw(logging.INFO, "testing logger", to_stdout=False)
-        context = mock_main.ctx
-        context.logger.removeHandler.assert_called_once_with(context.logger_stdout_handler)
-        context.logger.log.assert_called_once_with(logging.INFO, "testing logger")
-        context.logger.addHandler.assert_called_once_with(context.logger_stdout_handler)
+        mock_now.strftime.assert_called_once_with("%Y/%m/%d %H:%M:%S")
 
     @mock.patch('cluster_preflight_check.utils.msg_raw')
     def test_msg_info(self, mock_msg_raw):
@@ -106,6 +97,27 @@ class TestUtils(unittest.TestCase):
         mock_msg_raw.return_value = mock.Mock()
         utils.msg_error("test")
         mock_msg_raw.assert_called_once_with(logging.ERROR, "test", True)
+
+    @mock.patch('os.getuid')
+    def test_is_root(self, mock_getuid):
+        mock_getuid.return_value = 0
+        self.assertEqual(utils.is_root(), True)
+        mock_getuid.assert_called_once_with()
+    '''
+    @mock.patch('cluster_preflight_check.main')
+    def test_msg_raw(self, mock_main):
+        utils.msg_raw(logging.INFO, "testing logger")
+        mock_main.ctx.logger.log.assert_called_once_with(logging.INFO, "testing logger")
+
+    @mock.patch('cluster_preflight_check.main')
+    def test_msg_raw_disable_stdout(self, mock_main):
+        utils.msg_raw(logging.INFO, "testing logger", to_stdout=False)
+        context = mock_main.ctx
+        context.logger.removeHandler.assert_called_once_with(context.logger_stdout_handler)
+        context.logger.log.assert_called_once_with(logging.INFO, "testing logger")
+        context.logger.addHandler.assert_called_once_with(context.logger_stdout_handler)
+
+
 
     @mock.patch('cluster_preflight_check.utils.msg_info')
     def test_task_info(self, mock_info):
