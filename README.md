@@ -1,6 +1,34 @@
 # cluster-preflight-check
 Tool for Standardize Testing of Basic Cluster Functionality
 
+## Motivation
+#### Convenient
+Customers using tools like yast2-cluster/ha-cluster-bootstrap to setup a cluster.
+Before really pushing into production environment, it's necessary to make sure everything in cluster works well and is configured correctly.
+To archive above target, a lots of commands or steps will be included, like kill the primary process, check node/resource/cluster status, fence specific node,
+simulate split brain scenarios, show these commands' results and how to recover.</br>
+**So it will be more convenient if we can integrate these commands into one tool.**
+
+#### Standard
+**Ship the standard commands.**</br>
+Like how to kill process, how to check status, how to make split brain, there are lots ways to to that. 
+In the cluster-preflight-check, we only provide one way to do this, the way we make sure it do works and is recoverable. 
+
+#### Reusable 
+**Results can be reused.**</br>
+cluster-preflight-check generates JSON result after each test case.
+The JSON result includes loggings, descriptions, timestamp, and whether this case has passed.
+It can easily be utilized by other tools/applications and be friendly with developer.
+
+#### Traceable
+**Process can be traceable.**</br>
+cluster-preflight-check has loggings and reports.
+For killing testcase, a report will be created.
+Report will includes test case description, action logging and explanation for possible results.
+
+#### Recoverable
+cluster-preflight-check will not bring new troubles or unrecoverable troubles after executing actions.
+
 ## Features
 #### Check environment
 * check hostname resolvable
