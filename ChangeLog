@@ -1,3 +1,8 @@
+* Sat Mar 7 2020 Xin Liang <XLiang@suse.com>
+- version 0.0.34
+- Update README: package description
+- Enable continue delivery and submit
+
 * Mon Sep 16 2019 Xin Liang <XLiang@suse.com>
 - version 0.0.33
 - Make sure this tool can only be executed as root
