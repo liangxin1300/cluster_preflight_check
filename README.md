@@ -1,5 +1,5 @@
 # cluster-preflight-check
-Tool for Standardize Testing of Basic Cluster Functionality
+**cluster-preflight-check** by its name targets to trigger cluster failures and verify some key configuration right before it goes to production. Cluster failure simulation by different people can go wild and the results can be different, even wrongly interpreted. This tool standardizes the steps as the simple CLI. It is carefully designed and must not change any configuration to harm the production.
 
 ## Motivation
 #### Convenient
