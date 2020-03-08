@@ -7,7 +7,7 @@ setuptools.setup(
     author_email="XLiang@suse.com",
     url="https://github.com/liangxin1300/cluster_preflight_check.git",
     license="BSD",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=["tests"]),
     description="Tool for Standardize Testing of Basic Cluster Functionality",
     entry_points={
         'console_scripts': ['ha-cluster-preflight-check=cluster_preflight_check.main:main'],
