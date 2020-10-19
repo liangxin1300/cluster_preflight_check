@@ -98,6 +98,13 @@ class TestUtils(unittest.TestCase):
         utils.msg_error("test")
         mock_msg_raw.assert_called_once_with(logging.ERROR, "test", True)
 
+    def test_get_handler(self):
+        mock_handler1 = mock.Mock(_name="test1_handler")
+        mock_handler2 = mock.Mock(_name="test2_handler")
+        mock_logger = mock.Mock(handlers=[mock_handler1, mock_handler2])
+        res = utils.get_handler(mock_logger, "test1_handler")
+        self.assertEqual(res, mock_handler1)
+
     @mock.patch('os.getuid')
     def test_is_root(self, mock_getuid):
         mock_getuid.return_value = 0
