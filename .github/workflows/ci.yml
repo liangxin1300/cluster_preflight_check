@@ -22,7 +22,7 @@ jobs:
       #if: github.ref == 'refs/heads/master' && github.event_name == 'push'
       env:
         FOLDER: /package
-        PACKAGE_NAME: python_cluster_preflight_check
+        PACKAGE_NAME: python-cluster-preflight-check
         OBS_USER: ${{ secrets.OBS_USER }}
         OBS_PASS: ${{ secrets.OBS_PASS }}
         OBS_PROJECT: ${{ secrets.OBS_PROJECT }}
